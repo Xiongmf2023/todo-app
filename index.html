@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="我的待办">
+<meta name="theme-color" content="#f5f0eb">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23e07b5a'/><text x='50' y='65' text-anchor='middle' fill='white' font-size='50' font-family='system-ui'>✓</text></svg>">
+<title>我的待办</title>
+
+<style>
+/* ============================================ */
+/* Theme Variables                              */
+/* ============================================ */
+:root {
+  --bg: #f5f0eb;
+  --surface: #ffffff;
+  --surface2: #faf7f4;
+  --hover: #ede6de;
+  --active: #e6ddd3;
+  --text: #2c2416;
+  --text2: #6b5e4a;
+  --text3: #9b8d7a;
+  --border: #e0d7cb;
+  --border-light: #efe9e0;
+  --accent: #e07b5a;
+  --accent-hover: #c96a4c;
+  --accent-bg: #fbeae3;
+  --accent-text: #ffffff;
+  --red: #e05555;
+  --red-bg: #fce8e8;
+  --orange: #e09b4a;
+  --orange-bg: #fdf0e0;
+  --blue: #4a8de0;
+  --blue-bg: #e8f0fc;
+  --green: #4aad5e;
+  --green-bg: #e6f7ea;
+  --purple: #8b5cf6;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1815;
+  --surface: #24211d;
+  --surface2: #1e1c18;
+  --hover: #2d2924;
+  --active: #36312b;
+  --text: #e8e2d8;
+  --text2: #a09484;
+  --text3: #6b6054;
+  --border: #36312b;
+  --border-light: #2d2924;
+  --accent: #ee8e70;
+  --accent-hover: #f0a088;
+  --accent-bg: #3a2218;
+  --red: #e87070;
+  --red-bg: #3a1e1e;
+  --orange: #e0a460;
+  --orange-bg: #3a2a18;
+  --blue: #6098e8;
+  --blue-bg: #1a2438;
+  --green: #5abe70;
+  --green-bg: #1a3020;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+</style>
+
+<style>
+/* ============================================ */
+/* Reset & Base                                 */
+/* ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+}
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.2s, color 0.2s;
+  position: relative;
+}
+input, button, textarea { font-family: inherit; font-size: inherit; border: none; outline: none; background: none; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+ul { list-style: none; }
+
+/* ============================================ */
+/* Header                                       */
+/* ============================================ */
+.app-header {
+  padding: 16px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  padding-bottom: 8px;
+  transition: background 0.2s;
+}
+.app-header h1 {
+  font-size: 1.4rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  flex: 1;
+}
+.header-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: all 0.15s;
+}
+.header-btn:active { transform: scale(0.94); background: var(--hover); }
+
+/* ============================================ */
+/* Progress bar                                 */
+/* ============================================ */
+.progress-wrap {
+  padding: 4px 16px 10px;
+}
+.progress-info {
+  display: flex; justify-content: space-between;
+  font-size: 0.72rem; color: var(--text3);
+  margin-bottom: 4px;
+}
+.progress-bar {
+  height: 4px; background: var(--hover); border-radius: 2px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); width: 0%;
+}
+
+/* ============================================ */
+/* Add task bar                                 */
+/* ============================================ */
+.add-bar {
+  padding: 0 16px 10px;
+  display: flex; gap: 8px; align-items: center;
+}
+.add-input-wrap {
+  flex: 1;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px 2px 2px 14px;
+  transition: all 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+.add-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+.add-input-wrap input {
+  flex: 1; padding: 10px 0;
+  font-size: 0.95rem;
+  min-width: 0;
+}
+.add-input-wrap input::placeholder { color: var(--text3); }
+.add-chip {
+  font-size: 0.75rem; padding: 4px 8px; border-radius: 12px;
+  white-space: nowrap; font-weight: 500;
+  transition: all 0.15s;
+  cursor: pointer;
+  background: var(--hover);
+  color: var(--text2);
+}
+.add-chip.active { background: var(--accent-bg); color: var(--accent); }
+.add-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 400;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(224,123,90,0.35);
+  transition: all 0.15s;
+}
+.add-btn:active { transform: scale(0.92); background: var(--accent-hover); }
+.date-pick { padding: 4px 8px; font-size: 0.8rem; border-radius: 12px; background: var(--hover); color: var(--text2); display: none; }
+
+/* ============================================ */
+
+/* ============================================ */
+/* Task list                                    */
+/* ============================================ */
+.task-list {
+  flex: 1; padding: 0 12px 120px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Empty state */
+.empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 50px 20px; text-align: center;
+}
+.empty-icon { font-size: 3rem; margin-bottom: 10px; opacity: 0.5; }
+.empty-title { font-size: 1rem; font-weight: 600; color: var(--text2); }
+.empty-desc { font-size: 0.82rem; color: var(--text3); margin-top: 4px; max-width: 220px; }
+
+/* Group header */
+.group-header {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text3);
+  padding: 8px 8px 6px; margin-top: 6px;
+}
+
+/* Task card */
+.task-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 13px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  transition: background 0.15s, transform 0.15s;
+  -webkit-transform: translateZ(0);
+  z-index: 1;
+}
+.task-card:active { background: var(--surface); }
+.task-card.done .task-body { opacity: 0.45; }
+.task-card.done .task-title { text-decoration: line-through; }
+.task-body, .check-circle, .task-actions { position: relative; z-index: 2; }
+
+/* Check circle */
+.check-circle {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; color: transparent;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.check-circle:active { transform: scale(0.9); }
+.check-circle.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* Task body */
+.task-body { flex: 1; min-width: 0; transition: opacity 0.2s; }
+.task-title { font-size: 0.95rem; font-weight: 480; line-height: 1.35; word-break: break-word; }
+.task-meta {
+  display: flex; gap: 6px; align-items: center; margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+/* Meta tags */
+.meta-priority { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; font-weight: 650; letter-spacing: 0.02em; }
+.meta-priority.p1 { background: var(--red-bg); color: var(--red); }
+.meta-priority.p2 { background: var(--orange-bg); color: var(--orange); }
+.meta-priority.p3 { background: var(--blue-bg); color: var(--blue); }
+
+.meta-due { font-size: 0.7rem; color: var(--text3); }
+.meta-due.over { color: var(--red); font-weight: 550; }
+
+.meta-list { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; font-weight: 500; }
+
+.meta-sub { font-size: 0.7rem; color: var(--text3); }
+
+/* Task right actions */
+.task-actions {
+  display: flex; gap: 2px; flex-shrink: 0;
+  align-items: center;
+}
+.task-act {
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 0.8rem; color: var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.task-act:active { background: var(--hover); }
+.task-act.del:active { background: var(--red-bg); color: var(--red); }
+
+/* Subtasks */
+.subtasks {
+  margin-top: 5px;
+  padding-left: 34px;
+}
+.sub-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 6px;
+  font-size: 0.84rem; color: var(--text2);
+}
+.sub-dot {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; color: transparent;
+}
+.sub-dot.checked { background: var(--accent); border-color: var(--accent); color: white; }
+.sub-done .sub-text { text-decoration: line-through; opacity: 0.45; }
+.sub-text { flex: 1; }
+.sub-del {
+  font-size: 0.7rem; color: var(--text3);
+  padding: 2px 6px; border-radius: 8px; display: none;
+}
+.sub-row:active .sub-del { display: block; }
+.sub-del:active { color: var(--red); }
+
+/* ============================================ */
+/* Swipe action background (iOS style)          */
+/* ============================================ */
+.swipe-bg {
+  position: absolute; top: 0; bottom: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.82rem; font-weight: 600; color: white;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ============================================ */
+/* Bottom nav                                   */
+/* ============================================ */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 500px;
+  background: var(--surface);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  padding: 6px 8px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  z-index: 20;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+  padding: 6px 0; border-radius: var(--radius-xs);
+  font-size: 0.66rem; font-weight: 500;
+  color: var(--text3);
+  transition: all 0.15s;
+}
+.nav-btn .nav-icon { font-size: 1.3rem; }
+.nav-btn.active { color: var(--accent); font-weight: 600; }
+.nav-btn:active { background: var(--hover); }
+.nav-badge {
+  font-size: 0.6rem; padding: 1px 5px; border-radius: 8px;
+  background: var(--hover); font-weight: 500;
+  margin-left: 2px; min-width: 16px; text-align: center;
+}
+.nav-btn.active .nav-badge { background: var(--accent-bg); color: var(--accent); }
+
+/* ============================================ */
+/* List picker (bottom sheet style)             */
+/* ============================================ */
+.sheet-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 100;
+  display: none;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.sheet-overlay.show { display: block; }
+
+.sheet {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+  width: 100%; max-width: 500px;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  z-index: 101;
+  padding: 16px 16px 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.sheet-overlay.show + .sheet,
+.sheet.show { transform: translateX(-50%) translateY(0); }
+
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--border);
+  border-radius: 2px; margin: 0 auto 14px;
+}
+.sheet-title { font-size: 0.8rem; font-weight: 650; color: var(--text2); margin-bottom: 10px; padding: 0 4px; }
+.sheet-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; border-radius: var(--radius-xs);
+  font-size: 0.95rem;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.sheet-item:active { background: var(--hover); }
+.sheet-item .list-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.sheet-item.selected { background: var(--accent-bg); font-weight: 550; }
+
+.sheet-add {
+  display: flex; gap: 8px; margin-top: 12px; padding: 0 4px;
+}
+.sheet-add input {
+  flex: 1; padding: 10px 12px;
+  background: var(--surface2); border-radius: var(--radius-xs);
+  font-size: 0.9rem;
+}
+.sheet-add input::placeholder { color: var(--text3); }
+.sheet-add-btn {
+  padding: 10px 16px; background: var(--accent); color: white;
+  border-radius: var(--radius-xs); font-weight: 600; font-size: 0.85rem;
+}
+.sheet-add-btn:active { background: var(--accent-hover); }
+
+/* ============================================ */
+/* Search modal                                 */
+/* ============================================ */
+.search-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 100;
+  display: none;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.search-overlay.show { display: block; }
+.search-box {
+  position: fixed; top: 50px; left: 50%; transform: translateX(-50%);
+  width: calc(100% - 32px); max-width: 460px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  z-index: 101;
+  max-height: 60vh;
+  display: flex; flex-direction: column;
+}
+.search-input-wrap {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.search-input-wrap input { flex: 1; font-size: 0.95rem; padding: 4px 0; }
+.search-results { flex: 1; overflow-y: auto; padding: 6px; max-height: 45vh; }
+.search-empty { text-align: center; padding: 20px; color: var(--text3); font-size: 0.82rem; }
+.search-item {
+  padding: 10px 12px; border-radius: var(--radius-xs);
+  font-size: 0.9rem; display: flex; align-items: center; gap: 8px;
+}
+.search-item:active { background: var(--hover); }
+
+/* ============================================ */
+/* Toast                                        */
+/* ============================================ */
+.toast {
+  position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  padding: 10px 20px; border-radius: 20px;
+  font-size: 0.84rem; font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  z-index: 300;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+  animation: toastIn 0.3s ease;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.toast .undo { color: var(--accent); font-weight: 600; cursor: pointer; padding: 2px 6px; }
+
+/* ============================================ */
+/* Confetti                                     */
+/* ============================================ */
+#confetti {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 9999;
+}
+
+/* ============================================ */
+/* Scrollbar                                    */
+/* ============================================ */
+::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <h1 id="headerTitle">📋 今天</h1>
+  <button class="header-btn" id="searchBtn" aria-label="搜索">🔍</button>
+  <button class="header-btn" id="themeBtn" aria-label="主题">🌓</button>
+  <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
+</div>
+
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="progress-info">
+    <span id="progText">已完成 0 / 0 项</span>
+    <span id="progPct">0%</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progFill"></div>
+  </div>
+</div>
+
+<!-- Add task -->
+<div class="add-bar">
+  <div class="add-input-wrap" id="addWrap">
+    <input type="text" id="addInput" placeholder="添加任务…" autocomplete="off">
+    <span class="add-chip" id="priChip">🏁</span>
+    <span class="add-chip" id="dateChip">📅</span>
+    <input type="date" id="datePick" class="date-pick">
+  </div>
+  <button class="add-btn" id="addBtn">+</button>
+</div>
+
+<!-- Task list -->
+<div class="task-list" id="taskList">
+  <div class="empty">
+    <div class="empty-icon">🎉</div>
+    <div class="empty-title">今天还没有任务</div>
+    <div class="empty-desc">在上方输入框添加任务，开启高效的一天</div>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-nav="today">
+    <span class="nav-icon">⭐</span>今天<span class="nav-badge">0</span>
+  </button>
+  <button class="nav-btn" data-nav="upcoming">
+    <span class="nav-icon">📅</span>计划<span class="nav-badge">0</span>
+  </button>
+  <button class="nav-btn" data-nav="all">
+    <span class="nav-icon">📥</span>全部<span class="nav-badge">0</span>
+  </button>
+  <button class="nav-btn" data-nav="done">
+    <span class="nav-icon">✅</span>已完成<span class="nav-badge">0</span>
+  </button>
+</nav>
+
+<!-- List picker sheet -->
+<div class="sheet-overlay" id="sheetOverlay"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">选择清单</div>
+  <div class="sheet-item selected" data-list-id="">
+    <span class="list-dot" style="background:var(--text3)"></span> 全部清单
+  </div>
+  <div id="sheetLists"></div>
+  <div class="sheet-add">
+    <input type="text" id="newListInput" placeholder="新建清单…">
+    <button class="sheet-add-btn" id="newListBtn">新建</button>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="search-overlay" id="searchOverlay"></div>
+<div class="search-box" id="searchBox" style="display:none;">
+  <div class="search-input-wrap">
+    <span>🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索任务…">
+    <button style="font-size:0.75rem;color:var(--text3);padding:4px 10px;" id="searchClose">关闭</button>
+  </div>
+  <div class="search-results" id="searchResults"></div>
+</div>
+
+<!-- Confetti -->
+<canvas id="confetti"></canvas>
+
+<script>
+(function() {
+'use strict';
+
+// ─── Data ────────────────────────────────────
+const STORE = 'mytodo_v2';
+
+let state = {
+  lists: [
+    { id: 'personal', name: '个人', color: '#e07b5a', icon: '👤' },
+    { id: 'work', name: '工作', color: '#4a8de0', icon: '💼' },
+    { id: 'shop', name: '购物', color: '#8b5cf6', icon: '🛒' },
+  ],
+  tasks: [],
+  view: 'today',   // today | upcoming | all | done
+  list: '',        // '' = all lists
+  theme: 'light',
+  sortBy: 'default',
+};
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state.lists = d.lists || state.lists;
+      state.tasks = d.tasks || [];
+      state.view = d.view || 'today';
+      state.list = d.list || '';
+      state.theme = d.theme || 'light';
+      state.sortBy = d.sortBy || 'default';
+    }
+  } catch(e) {}
+}
+
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch(e) {}
+}
+
+// ─── Helpers ─────────────────────────────────
+function uid() {
+  let max = 0;
+  state.tasks.forEach(t => {
+    if (t.id > max) max = t.id;
+    if (t.subs) t.subs.forEach(s => { if (s.id > max) max = s.id; });
+  });
+  return max + 1;
+}
+
+function today() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function fmtDate(ds) {
+  if (!ds) return '';
+  const parts = ds.split('-');
+  const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  const td = new Date(); td.setHours(0,0,0,0);
+  const diff = Math.round((d - td) / 86400000);
+  if (diff === 0) return '今天';
+  if (diff === 1) return '明天';
+  if (diff === -1) return '昨天';
+  if (diff < -1) return Math.abs(diff) + '天前';
+  if (diff < 7) return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+  return (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+
+function isOver(ds) { return ds && ds < today(); }
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── Filtering ───────────────────────────────
+function filteredTasks() {
+  let ts = [...state.tasks];
+  if (state.list) ts = ts.filter(t => t.listId === state.list);
+
+  const td = today();
+  switch (state.view) {
+    case 'today':
+      ts = ts.filter(t => !t.done && (!t.due || t.due <= td));
+      break;
+    case 'upcoming':
+      ts = ts.filter(t => !t.done && t.due && t.due > td);
+      break;
+    case 'all':
+      ts = ts.filter(t => !t.done);
+      break;
+    case 'done':
+      ts = ts.filter(t => t.done);
+      break;
+  }
+  return ts;
+}
+
+function counts() {
+  const td = today();
+  return {
+    today: state.tasks.filter(t => !t.done && (!t.due || t.due <= td)).length,
+    upcoming: state.tasks.filter(t => !t.done && t.due && t.due > td).length,
+    all: state.tasks.filter(t => !t.done).length,
+    done: state.tasks.filter(t => t.done).length,
+  };
+}
+
+function listById(id) { return state.lists.find(l => l.id === id); }
+
+// ─── Render ──────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function renderAll() {
+  updateHeader();
+  updateProgress();
+  renderTasks();
+  updateBottomNav();
+  save();
+}
+
+function updateHeader() {
+  let title = '📋 全部';
+  if (state.list) {
+    const l = listById(state.list);
+    title = (l ? l.icon + ' ' + l.name : '📋 清单');
+  } else {
+    const map = { today: '⭐ 今天', upcoming: '📅 计划', all: '📥 全部', done: '✅ 已完成' };
+    title = map[state.view] || '📋 全部';
+  }
+  $('headerTitle').textContent = title;
+}
+
+function updateProgress() {
+  let pool = [...state.tasks];
+  if (state.list) pool = pool.filter(t => t.listId === state.list);
+  const done = pool.filter(t => t.done).length;
+  const total = pool.length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  $('progText').textContent = '已完成 ' + done + ' / ' + total + ' 项';
+  $('progPct').textContent = pct + '%';
+  $('progFill').style.width = pct + '%';
+}
+
+function renderTasks() {
+  const ts = filteredTasks();
+  const el = $('taskList');
+
+  // Empty state
+  if (!ts.length) {
+    const em = {
+      today: ['🎉','今天没有任务','好好享受，或添加新任务'],
+      upcoming: ['📅','没有计划中的任务','给任务添加截止日期来规划未来'],
+      all: ['📋','还没有任务','点击上方输入框创建第一个任务'],
+      done: ['🏆','还没有完成的任务','完成一个任务，它会出现在这里'],
+    };
+    const e = em[state.view] || em.all;
+    el.innerHTML = '<div class="empty"><div class="empty-icon">'+e[0]+'</div><div class="empty-title">'+e[1]+'</div><div class="empty-desc">'+e[2]+'</div></div>';
+    return;
+  }
+
+  // Group
+  let groups = [];
+  const td = today();
+
+  if (state.view === 'today') {
+    const over = ts.filter(t => isOver(t.due));
+    const todayTasks = ts.filter(t => t.due === td);
+    const noDate = ts.filter(t => !t.due);
+    if (over.length) groups.push(['⚠️ 已过期', over]);
+    if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
+    if (noDate.length) groups.push(['📋 待安排', noDate]);
+  } else if (state.view === 'upcoming') {
+    // Group by date
+    const map = {};
+    ts.forEach(t => {
+      const k = t.due || 'nodate';
+      if (!map[k]) map[k] = [];
+      map[k].push(t);
+    });
+    Object.keys(map).sort().forEach(k => {
+      groups.push([k === 'nodate' ? '待安排' : fmtDate(k), map[k]]);
+    });
+  } else if (state.view === 'done') {
+    // Group by today / this week / older
+    const now = Date.now();
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const weekAgo = todayStart.getTime() - 7*86400000;
+    const t1 = [], t2 = [], t3 = [];
+    ts.forEach(t => {
+      const ct = t.completedAt || 0;
+      if (ct >= todayStart.getTime()) t1.push(t);
+      else if (ct >= weekAgo) t2.push(t);
+      else t3.push(t);
+    });
+    if (t1.length) groups.push(['今天完成', t1]);
+    if (t2.length) groups.push(['本周完成', t2]);
+    if (t3.length) groups.push(['更早完成', t3]);
+  } else {
+    // 'all' view
+    const over = ts.filter(t => isOver(t.due));
+    const todayTasks = ts.filter(t => t.due === td);
+    const upcoming = ts.filter(t => t.due && t.due > td);
+    const noDate = ts.filter(t => !t.due);
+    if (over.length) groups.push(['⚠️ 已过期', over]);
+    if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
+    if (upcoming.length) groups.push(['🔜 即将到来', upcoming]);
+    if (noDate.length) groups.push(['📋 待安排', noDate]);
+  }
+
+  let html = '';
+  groups.forEach(g => {
+    html += '<div class="group-header">' + g[0] + '</div>';
+    g[1].forEach(t => { html += taskHTML(t); });
+  });
+  el.innerHTML = html;
+}
+
+function taskHTML(t) {
+  const list = listById(t.listId);
+  const priLabels = { 1: '!!高', 2: '!中', 3: '·低' };
+  const priCls = { 1: 'p1', 2: 'p2', 3: 'p3' };
+  const hasSub = t.subs && t.subs.length > 0;
+  const doneSub = hasSub ? t.subs.filter(s => s.done).length : 0;
+
+  let subsHTML = '';
+  if (hasSub) {
+    subsHTML = '<div class="subtasks">' +
+      t.subs.map(s =>
+        '<div class="sub-row' + (s.done ? ' sub-done' : '') + '" data-sid="' + s.id + '">' +
+          '<div class="sub-dot' + (s.done ? ' checked' : '') + '" data-act="togglesub">✓</div>' +
+          '<span class="sub-text">' + esc(s.title) + '</span>' +
+          '<span class="sub-del" data-act="delsub">×</span>' +
+        '</div>'
+      ).join('') +
+    '</div>';
+  }
+
+  return '' +
+  '<div class="task-card' + (t.done ? ' done' : '') + '" data-tid="' + t.id + '">' +
+    '<div class="swipe-bg"></div>' +
+    '<div class="check-circle' + (t.done ? ' checked' : '') + '" data-act="toggle">✓</div>' +
+    '<div class="task-body" data-act="edit">' +
+      '<div class="task-title">' + esc(t.title) + '</div>' +
+      '<div class="task-meta">' +
+        (t.priority ? '<span class="meta-priority ' + priCls[t.priority] + '">' + (priLabels[t.priority]||'') + '</span>' : '') +
+        (t.due ? '<span class="meta-due' + (isOver(t.due) && !t.done ? ' over' : '') + '">📅 ' + fmtDate(t.due) + '</span>' : '') +
+        (list && !state.list ? '<span class="meta-list" style="background:' + list.color + '18;color:' + list.color + '">' + (list.icon||'') + ' ' + list.name + '</span>' : '') +
+        (hasSub ? '<span class="meta-sub">☑ ' + doneSub + '/' + t.subs.length + '</span>' : '') +
+      '</div>' +
+      subsHTML +
+    '</div>' +
+    '<div class="task-actions">' +
+      '<button class="task-act" data-act="edit" aria-label="编辑">✎</button>' +
+      '<button class="task-act del" data-act="delete" aria-label="删除">×</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function updateBottomNav() {
+  const c = counts();
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const v = b.dataset.nav;
+    b.classList.toggle('active', v === state.view && !state.list);
+    const badge = b.querySelector('.nav-badge');
+    if (badge) badge.textContent = c[v] || 0;
+  });
+}
+
+// ─── Actions ─────────────────────────────────
+function addTask(title, opts) {
+  title = (title || '').trim();
+  if (!title) return null;
+
+  const t = {
+    id: uid(),
+    title: title,
+    done: false,
+    priority: opts.priority || null,
+    due: opts.due || null,
+    listId: opts.listId || state.list || 'personal',
+    subs: [],
+    createdAt: Date.now(),
+    order: state.tasks.length,
+  };
+  state.tasks.unshift(t);
+  renderAll();
+  return t;
+}
+
+function toggleTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  const wasDone = t.done;
+  t.done = !t.done;
+  t.completedAt = t.done ? Date.now() : 0;
+  renderAll();
+  if (t.done && !wasDone) confetti();
+}
+
+function toggleSub(tid, sid) {
+  const t = state.tasks.find(x => x.id === tid);
+  if (!t || !t.subs) return;
+  const s = t.subs.find(x => x.id === sid);
+  if (!s) return;
+  s.done = !s.done;
+  renderAll();
+}
+
+function deleteTask(id) {
+  const idx = state.tasks.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const removed = state.tasks.splice(idx, 1)[0];
+  renderAll();
+  toast('已删除「' + removed.title + '」', () => {
+    state.tasks.splice(idx, 0, removed);
+    renderAll();
+  });
+}
+
+function delSub(tid, sid) {
+  const t = state.tasks.find(x => x.id === tid);
+  if (!t || !t.subs) return;
+  t.subs = t.subs.filter(x => x.id !== sid);
+  renderAll();
+}
+
+// ─── NLP ─────────────────────────────────────
+function parseNLP(raw) {
+  let s = raw.trim();
+  const opts = { priority: null, due: null, listId: null };
+
+  // Date
+  const dateMap = [
+    [/今天$/, today()],
+    [/明天$/, offsetDate(1)],
+    [/后天$/, offsetDate(2)],
+    [/大后天$/, offsetDate(3)],
+    [/周一$/, nextDow(1)],
+    [/周二$/, nextDow(2)],
+    [/周三$/, nextDow(3)],
+    [/周四$/, nextDow(4)],
+    [/周五$/, nextDow(5)],
+    [/周六$/, nextDow(6)],
+    [/周日$|周天$/, nextDow(0)],
+    [/周末$/, nextDow(6)],
+  ];
+  for (const [re, fn] of dateMap) {
+    if (re.test(s)) { opts.due = fn; s = s.replace(re, '').trim(); break; }
+  }
+
+  // Date at start
+  const dateStart = [
+    [/^今天\s*/, today()],
+    [/^明天\s*/, offsetDate(1)],
+  ];
+  for (const [re, fn] of dateStart) {
+    if (re.test(s)) { opts.due = fn; s = s.replace(re, '').trim(); break; }
+  }
+
+  // Priority
+  if (/!!高/.test(s)) { opts.priority = 1; s = s.replace(/!!高/g, '').trim(); }
+  else if (/!!/.test(s)) { opts.priority = 1; s = s.replace(/!!/g, '').trim(); }
+  else if (/!中/.test(s)) { opts.priority = 2; s = s.replace(/!中/g, '').trim(); }
+  else if (/!低/.test(s)) { opts.priority = 3; s = s.replace(/!低/g, '').trim(); }
+  else if (/!/.test(s)) { opts.priority = 2; s = s.replace(/!/, '').trim(); }
+
+  // List
+  const lm = s.match(/#(\S+)/);
+  if (lm) {
+    const tag = lm[1].toLowerCase();
+    const l = state.lists.find(x => x.name.toLowerCase() === tag || x.id === tag);
+    if (l) opts.listId = l.id;
+    s = s.replace(lm[0], '').trim();
+  }
+
+  return { title: s, ...opts };
+}
+
+function offsetDate(n) {
+  const d = new Date(); d.setDate(d.getDate() + n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function nextDow(dow) {
+  const d = new Date();
+  const diff = dow - d.getDay();
+  d.setDate(d.getDate() + (diff <= 0 ? diff + 7 : diff));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// ─── Confetti ────────────────────────────────
+function confetti() {
+  const c = $('confetti');
+  const ctx = c.getContext('2d');
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+  const colors = ['#e07b5a','#4a8de0','#8b5cf6','#4aad5e','#e09b4a','#e05555','#ff6b6b','#ffd93d','#6bcb77','#4d96ff'];
+  const ps = [];
+  for (let i = 0; i < 60; i++) {
+    ps.push({
+      x: Math.random()*c.width, y: -20-Math.random()*100,
+      w: Math.random()*9+4, h: Math.random()*5+3,
+      c: colors[Math.floor(Math.random()*colors.length)],
+      vy: Math.random()*2.5+1.5, vx: (Math.random()-0.5)*2.5,
+      r: Math.random()*360, rs: (Math.random()-0.5)*8,
+      o: 1,
+    });
+  }
+  let id;
+  function frame() {
+    ctx.clearRect(0,0,c.width,c.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.y += p.vy; p.x += p.vx; p.vy += 0.025; p.r += p.rs; p.o -= 0.006;
+      if (p.o > 0 && p.y < c.height) {
+        alive = true;
+        ctx.save(); ctx.globalAlpha = p.o;
+        ctx.translate(p.x,p.y); ctx.rotate(p.r*Math.PI/180);
+        ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.restore();
+      }
+    });
+    if (alive) id = requestAnimationFrame(frame);
+    else { ctx.clearRect(0,0,c.width,c.height); cancelAnimationFrame(id); }
+  }
+  frame();
+}
+
+// ─── Toast ───────────────────────────────────
+function toast(msg, undo) {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<span>' + msg + '</span>' + (undo ? '<span class="undo">撤销</span>' : '');
+  if (undo) el.querySelector('.undo').onclick = () => { undo(); el.remove(); };
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ──────────── INIT ───────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  applyTheme();
+  renderAll();
+
+  // ── Add task ──────────────────────────────
+  const addInput = $('addInput');
+  const addBtn = $('addBtn');
+  const priChip = $('priChip');
+  const dateChip = $('dateChip');
+  const datePick = $('datePick');
+
+  let pendPri = null;
+  let pendDate = null;
+
+  function doAdd() {
+    const raw = addInput.value.trim();
+    if (!raw) return;
+    const parsed = parseNLP(raw);
+    addTask(parsed.title, {
+      priority: pendPri || parsed.priority,
+      due: pendDate || parsed.due,
+      listId: parsed.listId || state.list || 'personal',
+    });
+    addInput.value = '';
+    pendPri = null; pendDate = null;
+    updateChips();
+    addInput.focus();
+  }
+
+  addBtn.addEventListener('click', doAdd);
+  addInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doAdd(); }
+  });
+
+  priChip.addEventListener('click', () => {
+    const cycle = [null, 1, 2, 3];
+    const i = cycle.indexOf(pendPri);
+    pendPri = cycle[(i + 1) % cycle.length];
+    updateChips();
+  });
+
+  dateChip.addEventListener('click', () => {
+    if (pendDate) { pendDate = null; datePick.style.display = 'none'; updateChips(); return; }
+    // Quick date: tomorrow
+    pendDate = offsetDate(1);
+    updateChips();
+  });
+
+  dateChip.addEventListener('dblclick', () => {
+    datePick.style.display = datePick.style.display === 'none' ? 'block' : 'none';
+    if (datePick.style.display !== 'none') datePick.focus();
+  });
+
+  // Long press date chip to open picker
+  let datePressTimer;
+  dateChip.addEventListener('touchstart', () => {
+    datePressTimer = setTimeout(() => {
+      datePick.style.display = 'block';
+      datePick.focus();
+      datePick.click(); // trigger native picker on iOS
+    }, 400);
+  });
+  dateChip.addEventListener('touchend', () => clearTimeout(datePressTimer));
+  dateChip.addEventListener('touchmove', () => clearTimeout(datePressTimer));
+
+  datePick.addEventListener('change', () => {
+    pendDate = datePick.value;
+    datePick.style.display = 'none';
+    updateChips();
+  });
+
+  function updateChips() {
+    priChip.classList.toggle('active', pendPri !== null);
+    priChip.textContent = { null: '🏁', 1: '🔴高', 2: '🟠中', 3: '🔵低' }[String(pendPri)] || '🏁';
+    dateChip.classList.toggle('active', pendDate !== null);
+    dateChip.textContent = pendDate ? '📅✓' : '📅';
+  }
+
+  // ── Task card clicks ──────────────────────
+  const taskList = $('taskList');
+
+  taskList.addEventListener('click', e => {
+    const act = e.target.dataset.act || e.target.closest('[data-act]')?.dataset.act;
+    const card = e.target.closest('.task-card');
+    const tid = card ? parseInt(card.dataset.tid) : null;
+    const subRow = e.target.closest('.sub-row');
+    const sid = subRow ? parseInt(subRow.dataset.sid) : null;
+
+    if (!tid) return;
+
+    switch (act) {
+      case 'toggle': toggleTask(tid); break;
+      case 'togglesub': toggleSub(tid, sid); break;
+      case 'delete': deleteTask(tid); break;
+      case 'delsub': delSub(tid, sid); break;
+      case 'edit': editTask(tid); break;
+    }
+  });
+
+  // ── Edit task ─────────────────────────────
+  function editTask(tid) {
+    const t = state.tasks.find(x => x.id === tid);
+    if (!t) return;
+
+    const subLines = (t.subs || []).map(s => (s.done ? '☑ ' : '☐ ') + s.title).join('\n');
+    const hints = [
+      '编辑标题后按确定保存',
+      subLines ? '\n-- 子任务 --\n' + subLines : '',
+      '\n快捷指令：!!高 !中 !低 | 今天 明天 周一~日 | #清单名',
+    ].join('\n');
+
+    const result = prompt(hints, t.title);
+    if (result === null) return;
+
+    const lines = result.trim().split('\n').map(l => l.trim()).filter(l => l);
+    const main = lines[0] || t.title;
+
+    // Parse natural language
+    const parsed = parseNLP(main);
+    t.title = parsed.title;
+    if (parsed.priority) t.priority = parsed.priority;
+    if (parsed.due) t.due = parsed.due;
+    if (parsed.listId) t.listId = parsed.listId;
+
+    // Subtask lines
+    const subLinesRaw = lines.slice(1).filter(l =>
+      !l.startsWith('!!') && !l.startsWith('!') &&
+      !l.startsWith('#') && !/今天|明天|后天|周[一二三四五六日天]/.test(l)
+    );
+    if (subLinesRaw.length > 0) {
+      t.subs = subLinesRaw.map(l => ({
+        id: uid(),
+        title: l.replace(/^[☑☐✓]\s*/, ''),
+        done: /^[☑✓]/.test(l),
+      }));
+    }
+
+    renderAll();
+    toast('任务已更新');
+  }
+
+  // ── Bottom nav ────────────────────────────
+  document.querySelector('.bottom-nav').addEventListener('click', e => {
+    const btn = e.target.closest('.nav-btn');
+    if (!btn) return;
+    state.view = btn.dataset.nav;
+    state.list = '';
+    renderAll();
+    // Scroll to top
+    taskList.scrollTop = 0;
+  });
+
+  // ── List picker sheet ─────────────────────
+  const sheetOverlay = $('sheetOverlay');
+  const sheet = $('sheet');
+  const sheetLists = $('sheetLists');
+
+  function openSheet() {
+    renderSheetLists();
+    sheetOverlay.classList.add('show');
+    sheet.classList.add('show');
+  }
+
+  function closeSheet() {
+    sheetOverlay.classList.remove('show');
+    sheet.classList.remove('show');
+  }
+
+  function renderSheetLists() {
+    // "All lists" item
+    document.querySelectorAll('.sheet-item.selected').forEach(el => {
+      el.classList.toggle('selected', el.dataset.listId === state.list);
+    });
+
+    sheetLists.innerHTML = state.lists.map(l =>
+      '<div class="sheet-item' + (state.list === l.id ? ' selected' : '') + '" data-list-id="' + l.id + '">' +
+        '<span class="list-dot" style="background:' + l.color + '"></span>' +
+        l.icon + ' ' + l.name +
+        (state.list === l.id ? ' ✓' : '') +
+      '</div>'
+    ).join('');
+  }
+
+  $('listBtn').addEventListener('click', openSheet);
+  sheetOverlay.addEventListener('click', closeSheet);
+
+  sheet.addEventListener('click', e => {
+    const item = e.target.closest('.sheet-item');
+    if (!item) return;
+    const lid = item.dataset.listId;
+    state.list = lid || '';
+    state.view = 'all';
+    closeSheet();
+    renderAll();
+  });
+
+  // New list
+  $('newListBtn').addEventListener('click', () => {
+    const name = $('newListInput').value.trim();
+    if (!name) return;
+    const colors = ['#e07b5a','#4a8de0','#8b5cf6','#4aad5e','#e09b4a','#e05555','#6d8c7a','#b886e0'];
+    const icons = ['📌','💼','🛒','🎯','📚','🏠','❤️','🎨','✈️','🍔','🏃','💡'];
+    state.lists.push({
+      id: 'l_' + Date.now(),
+      name: name,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      icon: icons[Math.floor(Math.random()*icons.length)],
+    });
+    $('newListInput').value = '';
+    renderSheetLists();
+    renderAll();
+  });
+
+  $('newListInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('newListBtn').click();
+  });
+
+  // ── Search ────────────────────────────────
+  const searchOverlay = $('searchOverlay');
+  const searchBox = $('searchBox');
+  const searchInput = $('searchInput');
+  const searchResults = $('searchResults');
+
+  function openSearch() {
+    searchOverlay.classList.add('show');
+    searchBox.style.display = 'flex';
+    searchInput.value = '';
+    searchInput.focus();
+    searchResults.innerHTML = '<div class="search-empty">输入关键词查找任务</div>';
+  }
+  function closeSearch() {
+    searchOverlay.classList.remove('show');
+    searchBox.style.display = 'none';
+  }
+
+  $('searchBtn').addEventListener('click', openSearch);
+  $('searchClose').addEventListener('click', closeSearch);
+  searchOverlay.addEventListener('click', closeSearch);
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    if (!q) { searchResults.innerHTML = '<div class="search-empty">输入关键词查找任务</div>'; return; }
+    const results = state.tasks.filter(t =>
+      t.title.toLowerCase().includes(q) ||
+      (t.subs && t.subs.some(s => s.title.toLowerCase().includes(q)))
+    );
+    if (!results.length) {
+      searchResults.innerHTML = '<div class="search-empty">没有找到匹配的任务</div>';
+    } else {
+      searchResults.innerHTML = results.map(t =>
+        '<div class="search-item">' +
+          '<span>' + (t.done ? '✅' : '☐') + '</span>' +
+          '<span style="flex:1">' + esc(t.title) + '</span>' +
+          (t.due ? '<span style="font-size:0.7rem;color:var(--text3))">' + fmtDate(t.due) + '</span>' : '') +
+        '</div>'
+      ).join('');
+    }
+  });
+
+  // ── Theme ──────────────────────────────────
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', state.theme);
+    $('themeBtn').textContent = state.theme === 'light' ? '🌙' : '☀️';
+    document.querySelector('meta[name="theme-color"]').content =
+      state.theme === 'light' ? '#f5f0eb' : '#1a1815';
+  }
+
+  $('themeBtn').addEventListener('click', () => {
+    state.theme = state.theme === 'light' ? 'dark' : 'light';
+    applyTheme();
+    save();
+  });
+
+  // ── Swipe gestures ────────────────────────
+  let touchX0 = 0, touchY0 = 0, touchCard = null, swipeDx = 0;
+  const SWIPE = 70;
+
+  taskList.addEventListener('touchstart', e => {
+    const card = e.target.closest('.task-card');
+    if (!card) return;
+    touchCard = card;
+    touchX0 = e.touches[0].clientX;
+    touchY0 = e.touches[0].clientY;
+    swipeDx = 0;
+    const bg = card.querySelector('.swipe-bg');
+    if (bg) bg.style.transform = 'translateX(100%)';
+  }, { passive: true });
+
+  taskList.addEventListener('touchmove', e => {
+    if (!touchCard) return;
+    const dx = e.touches[0].clientX - touchX0;
+    const dy = e.touches[0].clientY - touchY0;
+    if (Math.abs(dy) > Math.abs(dx) * 1.2) return; // vertical scroll
+    swipeDx = dx;
+    const bg = touchCard.querySelector('.swipe-bg');
+    if (!bg) return;
+    if (dx < -10) {
+      bg.style.left = 'auto'; bg.style.right = '0';
+      bg.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      bg.style.backgroundColor = '#e05555';
+      bg.textContent = '删除';
+      bg.style.width = Math.min(Math.abs(dx), 100) + 'px';
+      bg.style.transform = 'translateX(0)';
+      bg.style.zIndex = '-1';
+    } else if (dx > 10) {
+      bg.style.left = '0'; bg.style.right = 'auto';
+      bg.style.borderRadius = 'var(--radius-sm) 0 0 var(--radius-sm)';
+      bg.style.backgroundColor = '#4aad5e';
+      bg.textContent = '完成';
+      bg.style.width = Math.min(dx, 100) + 'px';
+      bg.style.transform = 'translateX(0)';
+      bg.style.zIndex = '-1';
+    }
+  }, { passive: true });
+
+  taskList.addEventListener('touchend', () => {
+    if (!touchCard) return;
+    const tid = parseInt(touchCard.dataset.tid);
+    const bg = touchCard.querySelector('.swipe-bg');
+    if (Math.abs(swipeDx) > SWIPE && tid) {
+      if (swipeDx < -SWIPE) deleteTask(tid);
+      else if (swipeDx > SWIPE) toggleTask(tid);
+    }
+    // Reset
+    if (bg) { bg.style.transform = 'translateX(100%)'; bg.style.width = '0'; bg.style.zIndex = '-1'; }
+    touchCard = null;
+    swipeDx = 0;
+  });
+
+  // ── Focus input ────────────────────────────
+  // Don't auto-focus on mobile to prevent keyboard from popping up
+  // addInput.focus();
+});
+
+})();
+</script>
+</body>
+</html>
