@@ -331,6 +331,80 @@ ul { list-style: none; }
 .sub-del:active { color: var(--red); }
 
 /* ============================================ */
+/* Calendar View                                */
+/* ============================================ */
+.calendar-wrap {
+  padding: 0 8px;
+  margin-bottom: 10px;
+}
+.cal-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 8px 10px;
+}
+.cal-nav-title {
+  font-size: 0.95rem; font-weight: 650; color: var(--text);
+}
+.cal-nav-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  font-size: 1rem; color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.cal-nav-btn:active { background: var(--hover); }
+.cal-nav-today {
+  font-size: 0.75rem; padding: 5px 12px; border-radius: 14px;
+  color: var(--accent); font-weight: 600;
+  background: var(--accent-bg);
+}
+.cal-nav-today:active { opacity: 0.7; }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.cal-day-name {
+  font-size: 0.65rem; font-weight: 600;
+  color: var(--text3); padding: 6px 0;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 480;
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.cal-day:active { background: var(--hover); transform: scale(0.93); }
+.cal-day.other { color: var(--text3); opacity: 0.4; }
+.cal-day.today { font-weight: 700; color: var(--accent); }
+.cal-day.selected {
+  background: var(--accent);
+  color: white;
+  font-weight: 650;
+}
+.cal-day.selected.today { color: white; }
+.cal-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--accent);
+  margin-top: 1px;
+}
+.cal-day.other .cal-dot { opacity: 0; }
+.cal-day.selected .cal-dot { background: white; }
+
+/* Tasks under calendar */
+.cal-tasks-header {
+  font-size: 0.75rem; font-weight: 650; color: var(--text2);
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 6px;
+}
+
+/* ============================================ */
 /* Swipe action background (iOS style)          */
 /* ============================================ */
 .swipe-bg {
@@ -552,8 +626,8 @@ ul { list-style: none; }
   <button class="nav-btn active" data-nav="today">
     <span class="nav-icon">⭐</span>今天<span class="nav-badge">0</span>
   </button>
-  <button class="nav-btn" data-nav="upcoming">
-    <span class="nav-icon">📅</span>计划<span class="nav-badge">0</span>
+  <button class="nav-btn" data-nav="calendar">
+    <span class="nav-icon">📅</span>日历<span class="nav-badge">0</span>
   </button>
   <button class="nav-btn" data-nav="all">
     <span class="nav-icon">📥</span>全部<span class="nav-badge">0</span>
@@ -606,8 +680,10 @@ let state = {
     { id: 'shop', name: '购物', color: '#8b5cf6', icon: '🛒' },
   ],
   tasks: [],
-  view: 'today',   // today | upcoming | all | done
+  view: 'today',   // today | calendar | all | done
   list: '',        // '' = all lists
+  calMonth: null,  // null = current month, or 'YYYY-MM'
+  calDate: '',     // selected date in calendar, '' = today
   theme: 'light',
   sortBy: 'default',
 };
@@ -621,6 +697,8 @@ function load() {
       state.tasks = d.tasks || [];
       state.view = d.view || 'today';
       state.list = d.list || '';
+      state.calMonth = d.calMonth || null;
+      state.calDate = d.calDate || '';
       state.theme = d.theme || 'light';
       state.sortBy = d.sortBy || 'default';
     }
@@ -680,8 +758,10 @@ function filteredTasks() {
     case 'today':
       ts = ts.filter(t => !t.done && (!t.due || t.due <= td));
       break;
-    case 'upcoming':
-      ts = ts.filter(t => !t.done && t.due && t.due > td);
+    case 'calendar':
+      // Show tasks for selected date (default today)
+      const cd = state.calDate || td;
+      ts = ts.filter(t => !t.done && t.due === cd);
       break;
     case 'all':
       ts = ts.filter(t => !t.done);
@@ -697,7 +777,7 @@ function counts() {
   const td = today();
   return {
     today: state.tasks.filter(t => !t.done && (!t.due || t.due <= td)).length,
-    upcoming: state.tasks.filter(t => !t.done && t.due && t.due > td).length,
+    calendar: state.tasks.filter(t => !t.done && t.due && t.due > td).length,
     all: state.tasks.filter(t => !t.done).length,
     done: state.tasks.filter(t => t.done).length,
   };
@@ -722,7 +802,7 @@ function updateHeader() {
     const l = listById(state.list);
     title = (l ? l.icon + ' ' + l.name : '📋 清单');
   } else {
-    const map = { today: '⭐ 今天', upcoming: '📅 计划', all: '📥 全部', done: '✅ 已完成' };
+    const map = { today: '⭐ 今天', calendar: '📅 日历', all: '📥 全部', done: '✅ 已完成' };
     title = map[state.view] || '📋 全部';
   }
   $('headerTitle').textContent = title;
@@ -743,11 +823,22 @@ function renderTasks() {
   const ts = filteredTasks();
   const el = $('taskList');
 
-  // Empty state
+  // Calendar view: always show calendar + tasks
+  if (state.view === 'calendar') {
+    const td = today();
+    const selDate = state.calDate || td;
+    el.innerHTML = renderCalendar() +
+      '<div class="cal-tasks-header">' + fmtDate(selDate) + ' 的任务 · ' + ts.length + ' 项</div>' +
+      (ts.length ? ts.map(t => taskHTML(t)).join('') :
+        '<div class="empty" style="padding:24px"><div class="empty-icon">📭</div><div class="empty-title">这天没有任务</div><div class="empty-desc">在上方输入框添加任务，截止日期会自动设为这天</div></div>');
+    return;
+  }
+
+  // Empty state (non-calendar)
   if (!ts.length) {
     const em = {
       today: ['🎉','今天没有任务','好好享受，或添加新任务'],
-      upcoming: ['📅','没有计划中的任务','给任务添加截止日期来规划未来'],
+      calendar: ['📅','这天没有任务','点击右上角 + 为这天添加任务'],
       all: ['📋','还没有任务','点击上方输入框创建第一个任务'],
       done: ['🏆','还没有完成的任务','完成一个任务，它会出现在这里'],
     };
@@ -767,17 +858,6 @@ function renderTasks() {
     if (over.length) groups.push(['⚠️ 已过期', over]);
     if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
     if (noDate.length) groups.push(['📋 待安排', noDate]);
-  } else if (state.view === 'upcoming') {
-    // Group by date
-    const map = {};
-    ts.forEach(t => {
-      const k = t.due || 'nodate';
-      if (!map[k]) map[k] = [];
-      map[k].push(t);
-    });
-    Object.keys(map).sort().forEach(k => {
-      groups.push([k === 'nodate' ? '待安排' : fmtDate(k), map[k]]);
-    });
   } else if (state.view === 'done') {
     // Group by today / this week / older
     const now = Date.now();
@@ -852,6 +932,87 @@ function taskHTML(t) {
       '<button class="task-act del" data-act="delete" aria-label="删除">×</button>' +
     '</div>' +
   '</div>';
+}
+
+// ─── Calendar ────────────────────────────────
+function getCalMonth() {
+  if (state.calMonth) {
+    const [y, m] = state.calMonth.split('-');
+    return { year: +y, month: +m - 1 };
+  }
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() };
+}
+
+function setCalMonth(y, m) {
+  state.calMonth = y + '-' + String(m + 1).padStart(2, '0');
+}
+
+function renderCalendar() {
+  const { year, month } = getCalMonth();
+  const td = today();
+  const selDate = state.calDate || td;
+
+  // Month nav
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  let html = '<div class="calendar-wrap">';
+  html += '<div class="cal-nav">';
+  html += '<button class="cal-nav-btn" data-cal-act="prev">◀</button>';
+  html += '<span class="cal-nav-title">' + year + '年 ' + monthNames[month] + '</span>';
+  html += '<button class="cal-nav-btn" data-cal-act="next">▶</button>';
+  html += '<button class="cal-nav-today" data-cal-act="today">今天</button>';
+  html += '</div>';
+
+  // Day names
+  const dayNames = ['一','二','三','四','五','六','日'];
+  html += '<div class="cal-grid">';
+  dayNames.forEach(d => { html += '<div class="cal-day-name">' + d + '</div>'; });
+
+  // Build day cells
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  // Adjust: Monday = 0
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  // Collect all dates that have tasks in this month
+  const taskDates = new Set();
+  state.tasks.forEach(t => {
+    if (t.due && !t.done) {
+      const [ty, tm] = t.due.split('-');
+      if (+ty === year && +tm === month + 1) taskDates.add(t.due);
+    }
+  });
+
+  // Prev month fill
+  for (let i = startOffset - 1; i >= 0; i--) {
+    const d = daysInPrev - i;
+    const ds = year + '-' + String(month === 0 ? 12 : month).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    html += '<div class="cal-day other" data-cal-day="' + ds + '">' + d + '</div>';
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = year + '-' + String(month + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    let cls = 'cal-day';
+    if (ds === td) cls += ' today';
+    if (ds === selDate) cls += ' selected';
+    const hasTasks = taskDates.has(ds);
+    html += '<div class="' + cls + '" data-cal-day="' + ds + '">' + d +
+      (hasTasks ? '<div class="cal-dot"></div>' : '') + '</div>';
+  }
+
+  // Next month fill
+  const totalCells = startOffset + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let d = 1; d <= remaining; d++) {
+    const ds = year + '-' + String(month + 2 > 12 ? 1 : month + 2).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    html += '<div class="cal-day other" data-cal-day="' + ds + '">' + d + '</div>';
+  }
+
+  html += '</div></div>';
+  return html;
 }
 
 function updateBottomNav() {
@@ -1055,9 +1216,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const raw = addInput.value.trim();
     if (!raw) return;
     const parsed = parseNLP(raw);
+    // In calendar view, default due date to selected calendar date
+    let defaultDue = pendDate || parsed.due;
+    if (!defaultDue && state.view === 'calendar') {
+      defaultDue = state.calDate || today();
+    }
     addTask(parsed.title, {
       priority: pendPri || parsed.priority,
-      due: pendDate || parsed.due,
+      due: defaultDue,
       listId: parsed.listId || state.list || 'personal',
     });
     addInput.value = '';
@@ -1184,9 +1350,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     state.view = btn.dataset.nav;
     state.list = '';
+    if (state.view === 'calendar') {
+      state.calMonth = null;  // reset to current month
+      state.calDate = '';     // default to today
+    }
     renderAll();
-    // Scroll to top
     taskList.scrollTop = 0;
+  });
+
+  // ── Calendar interactions ──────────────────
+  taskList.addEventListener('click', e => {
+    // Calendar day click
+    const calDay = e.target.closest('.cal-day');
+    if (calDay) {
+      const ds = calDay.dataset.calDay;
+      if (!ds) return;
+      state.calDate = ds;
+      // If clicking a day from adjacent month, switch to that month
+      if (calDay.classList.contains('other')) {
+        const [y, m] = ds.split('-');
+        setCalMonth(+y, +m - 1);
+      }
+      renderAll();
+      return;
+    }
+
+    // Calendar nav buttons
+    const calAct = e.target.closest('[data-cal-act]');
+    if (calAct) {
+      const act = calAct.dataset.calAct;
+      const { year, month } = getCalMonth();
+      if (act === 'prev') {
+        setCalMonth(month === 0 ? year - 1 : year, month === 0 ? 11 : month - 1);
+      } else if (act === 'next') {
+        setCalMonth(month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1);
+      } else if (act === 'today') {
+        state.calMonth = null;
+        state.calDate = '';
+      }
+      renderAll();
+      return;
+    }
   });
 
   // ── List picker sheet ─────────────────────
@@ -1364,6 +1568,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bg) { bg.style.transform = 'translateX(100%)'; bg.style.width = '0'; bg.style.zIndex = '-1'; }
     touchCard = null;
     swipeDx = 0;
+  });
+
+  // ── Calendar swipe (left/right = prev/next month) ──
+  let calTouchX = 0, calSwiping = false;
+  taskList.addEventListener('touchstart', e => {
+    if (!e.target.closest('.calendar-wrap')) { calSwiping = false; return; }
+    calTouchX = e.touches[0].clientX;
+    calSwiping = true;
+  }, { passive: true });
+
+  taskList.addEventListener('touchmove', e => {
+    if (!calSwiping) return;
+  }, { passive: true });
+
+  taskList.addEventListener('touchend', e => {
+    if (!calSwiping) return;
+    calSwiping = false;
+    const dx = e.changedTouches[0].clientX - calTouchX;
+    if (Math.abs(dx) < 50) return;
+    const { year, month } = getCalMonth();
+    if (dx < -50) setCalMonth(month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1);
+    else setCalMonth(month === 0 ? year - 1 : year, month === 0 ? 11 : month - 1);
+    renderAll();
   });
 
   // ── Focus input ────────────────────────────
