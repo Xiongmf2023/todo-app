@@ -1076,7 +1076,13 @@ function renderTasks() {
     return;
   }
 
-  // Empty state (non-calendar)
+  // Stats view always renders (handles its own empty state)
+  if (state.view === 'stats') {
+    try { el.innerHTML = renderStatsView(); } catch(e) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">统计加载失败</div><div class="empty-desc">试试刷新页面</div></div>'; }
+    return;
+  }
+
+  // Empty state (non-calendar, non-stats)
   if (!ts.length) {
     const em = {
       today: ['🎉','今天没有任务','好好享受，或添加新任务'],
@@ -1101,9 +1107,6 @@ function renderTasks() {
     if (over.length) groups.push(['⚠️ 已过期', over]);
     if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
     if (noDate.length) groups.push(['📋 待安排', noDate]);
-  } else if (state.view === 'stats') {
-    try { el.innerHTML = renderStatsView(); } catch(e) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">统计加载失败</div><div class="empty-desc">试试刷新页面</div></div>'; }
-    return;
   } else if (state.view === 'done') {
     const now = Date.now();
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -1400,6 +1403,11 @@ function renderStatsView() {
 
   // ── History Timeline ─────────────────────
   const history = [...(state.logs || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
+
+  if (!history.length && !doneTasks.length) {
+    html += '<div class="empty" style="padding:24px"><div class="empty-icon">📝</div><div class="empty-title">还没有记录</div><div class="empty-desc">完成任务或使用计时器后，数据会出现在这里</div></div>';
+  }
+
   if (history.length) {
     html += '<div class="group-header">📜 历史记录</div>';
     html += '<div class="history-list">';
@@ -1413,7 +1421,7 @@ function renderStatsView() {
       }
       const icon = h.type === 'focus' ? '⏱️' : '✅';
       const detail = h.type === 'focus' ? (h.detail || '专注') : esc(h.detail || '完成任务');
-      const dur = h.type === 'focus' && h.duration ? ' <span style="font-size:0.7rem;color:var(--text3))">(' + h.duration + '分钟)</span>' : '';
+      const dur = h.type === 'focus' && h.duration ? ' <span style="font-size:0.7rem;color:var(--text3)">(' + h.duration + '分钟)</span>' : '';
       html += '<div class="history-item">' +
         '<span class="history-icon">' + icon + '</span>' +
         '<span class="history-text">' + detail + dur + '</span>' +
