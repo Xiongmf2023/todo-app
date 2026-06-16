@@ -284,6 +284,7 @@ ul { list-style: none; }
 
 .meta-due { font-size: 0.7rem; color: var(--text3); }
 .meta-due.over { color: var(--red); font-weight: 550; }
+.meta-done { font-size: 0.7rem; color: var(--green); font-weight: 500; }
 
 .meta-list { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; font-weight: 500; }
 
@@ -979,6 +980,15 @@ function fmtDate(ds) {
 }
 
 function isOver(ds) { return ds && ds < today(); }
+function fmtCompleted(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  if (diff === 0) return '今天';
+  if (diff === 1) return '昨天';
+  if (diff < 7) return diff + '天前';
+  return (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
 
 function esc(s) {
   const d = document.createElement('div');
@@ -1182,7 +1192,8 @@ function taskHTML(t) {
       '<div class="task-title">' + esc(t.title) + '</div>' +
       '<div class="task-meta">' +
         (t.priority ? '<span class="meta-priority ' + priCls[t.priority] + '">' + (priLabels[t.priority]||'') + '</span>' : '') +
-        (t.due ? '<span class="meta-due' + (isOver(t.due) && !t.done ? ' over' : '') + '">📅 ' + fmtDate(t.due) + '</span>' : '') +
+        (t.due && !t.done ? '<span class="meta-due' + (isOver(t.due) ? ' over' : '') + '">📅 ' + fmtDate(t.due) + '</span>' : '') +
+        (t.done && t.completedAt ? '<span class="meta-done">✅ ' + fmtCompleted(t.completedAt) + '完成</span>' : '') +
         (list && !state.list ? '<span class="meta-list" style="background:' + list.color + '18;color:' + list.color + '">' + (list.icon||'') + ' ' + list.name + '</span>' : '') +
         (hasSub ? '<span class="meta-sub">☑ ' + doneSub + '/' + t.subs.length + '</span>' : '') +
       '</div>' +
