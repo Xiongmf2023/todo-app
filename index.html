@@ -331,6 +331,119 @@ ul { list-style: none; }
 .sub-del:active { color: var(--red); }
 
 /* ============================================ */
+/* Timer Overlay                                */
+/* ============================================ */
+.timer-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 200; display: none;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.timer-overlay.show { display: block; }
+.timer-dialog {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: var(--surface); border-radius: 24px;
+  padding: 32px 24px 20px;
+  z-index: 201; width: 300px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.timer-ring-wrap { position: relative; width: 140px; height: 140px; margin: 0 auto 16px; }
+.timer-ring { width: 140px; height: 140px; }
+.timer-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center;
+}
+.timer-time { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.timer-label { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+.timer-presets { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.timer-preset {
+  padding: 6px 14px; border-radius: 16px;
+  font-size: 0.78rem; font-weight: 550;
+  background: var(--hover); color: var(--text2);
+  transition: all 0.15s;
+}
+.timer-preset:active { transform: scale(0.94); }
+.timer-preset.active { background: var(--accent); color: white; }
+.timer-controls { display: flex; gap: 8px; justify-content: center; }
+.timer-ctrl-btn {
+  width: 48px; height: 48px; border-radius: 50%;
+  font-size: 0.85rem; color: var(--text2); background: var(--hover);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.timer-ctrl-btn:active { transform: scale(0.92); }
+.timer-ctrl-btn.primary {
+  width: auto; padding: 0 24px; border-radius: 24px;
+  background: var(--accent); color: white; font-weight: 600; font-size: 0.9rem;
+  gap: 4px;
+}
+.timer-sessions {
+  margin-top: 14px; font-size: 0.72rem; color: var(--text3);
+}
+
+/* ============================================ */
+/* Heatmap (Stats view)                         */
+/* ============================================ */
+.heatmap-wrap {
+  padding: 8px 8px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.heatmap-grid {
+  display: flex; gap: 3px;
+  min-width: fit-content;
+}
+.heatmap-col {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.heatmap-cell {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: var(--hover);
+  transition: background 0.2s;
+}
+.heatmap-cell.l1 { background: var(--accent-bg); }
+.heatmap-cell.l2 { background: var(--accent); opacity: 0.5; }
+.heatmap-cell.l3 { background: var(--accent); opacity: 0.75; }
+.heatmap-cell.l4 { background: var(--accent); }
+.heatmap-labels {
+  display: flex; gap: 3px; padding: 4px 8px 0;
+}
+.heatmap-month {
+  font-size: 0.6rem; color: var(--text3);
+}
+.heatmap-legend {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 8px; font-size: 0.62rem; color: var(--text3);
+  justify-content: flex-end;
+}
+.heatmap-legend .dot {
+  width: 10px; height: 10px; border-radius: 2px;
+  background: var(--hover);
+}
+.heatmap-legend .dot.l1 { background: var(--accent-bg); }
+.heatmap-legend .dot.l2 { background: var(--accent); opacity: 0.5; }
+.heatmap-legend .dot.l3 { background: var(--accent); opacity: 0.75; }
+.heatmap-legend .dot.l4 { background: var(--accent); }
+
+.stats-summary {
+  display: flex; gap: 12px; padding: 12px 8px;
+}
+.stats-card {
+  flex: 1; background: var(--surface2);
+  border-radius: var(--radius-sm); padding: 12px;
+  text-align: center;
+}
+.stats-card .num {
+  font-size: 1.4rem; font-weight: 700; color: var(--accent);
+}
+.stats-card .lbl {
+  font-size: 0.65rem; color: var(--text3); margin-top: 2px;
+}
+
+/* ============================================ */
 /* Task Notes (inline)                          */
 /* ============================================ */
 .task-notes {
@@ -638,6 +751,7 @@ ul { list-style: none; }
 <div class="app-header">
   <h1 id="headerTitle">📋 今天</h1>
   <button class="header-btn" id="searchBtn" aria-label="搜索">🔍</button>
+  <button class="header-btn" id="timerBtn" aria-label="计时">⏱️</button>
   <button class="header-btn" id="themeBtn" aria-label="主题">🌓</button>
   <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
 </div>
@@ -684,8 +798,8 @@ ul { list-style: none; }
   <button class="nav-btn" data-nav="all">
     <span class="nav-icon">📥</span>全部<span class="nav-badge">0</span>
   </button>
-  <button class="nav-btn" data-nav="done">
-    <span class="nav-icon">✅</span>已完成<span class="nav-badge">0</span>
+  <button class="nav-btn" data-nav="stats">
+    <span class="nav-icon">📊</span>统计<span class="nav-badge">0</span>
   </button>
 </nav>
 
@@ -715,6 +829,35 @@ ul { list-style: none; }
   <div class="search-results" id="searchResults"></div>
 </div>
 
+<!-- Timer overlay -->
+<div class="timer-overlay" id="timerOverlay"></div>
+<div class="timer-dialog" id="timerDialog" style="display:none;">
+  <div class="timer-ring-wrap">
+    <svg class="timer-ring" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="6"/>
+      <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6"
+        stroke-linecap="round" id="timerProgress" stroke-dasharray="326.7" stroke-dashoffset="0"
+        transform="rotate(-90 60 60)"/>
+    </svg>
+    <div class="timer-center">
+      <div class="timer-time" id="timerDisplay">25:00</div>
+      <div class="timer-label" id="timerLabel">准备开始</div>
+    </div>
+  </div>
+  <div class="timer-presets">
+    <button class="timer-preset active" data-min="25">25分</button>
+    <button class="timer-preset" data-min="15">15分</button>
+    <button class="timer-preset" data-min="45">45分</button>
+    <button class="timer-preset" data-min="5">5分</button>
+  </div>
+  <div class="timer-controls">
+    <button class="timer-ctrl-btn" id="timerReset">↺</button>
+    <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
+    <button class="timer-ctrl-btn" id="timerClose">✕</button>
+  </div>
+  <div class="timer-sessions" id="timerSessions"></div>
+</div>
+
 <!-- Confetti -->
 <canvas id="confetti"></canvas>
 
@@ -732,13 +875,20 @@ let state = {
     { id: 'shop', name: '购物', color: '#8b5cf6', icon: '🛒' },
   ],
   tasks: [],
-  view: 'today',   // today | calendar | all | done
+  logs: [],        // {date:'YYYY-MM-DD', type:'task'|'focus', count:1}
+  view: 'today',   // today | calendar | all | stats
   list: '',        // '' = all lists
-  calMonth: null,  // null = current month, or 'YYYY-MM'
-  calDate: '',     // selected date in calendar, '' = today
+  calMonth: null,
+  calDate: '',
+  timerMins: 25,   // default focus minutes
   theme: 'light',
   sortBy: 'default',
 };
+
+// Timer runtime (not persisted)
+let timerSecs = 0;
+let timerRunning = false;
+let timerInterval = null;
 
 function load() {
   try {
@@ -747,10 +897,12 @@ function load() {
       const d = JSON.parse(raw);
       state.lists = d.lists || state.lists;
       state.tasks = d.tasks || [];
+      state.logs = d.logs || [];
       state.view = d.view || 'today';
       state.list = d.list || '';
       state.calMonth = d.calMonth || null;
       state.calDate = d.calDate || '';
+      state.timerMins = d.timerMins || 25;
       state.theme = d.theme || 'light';
       state.sortBy = d.sortBy || 'default';
     }
@@ -815,6 +967,10 @@ function filteredTasks() {
       const cd = state.calDate || td;
       ts = ts.filter(t => !t.done && t.due === cd);
       break;
+    case 'stats':
+      // Stats view handles its own rendering separately
+      ts = [];
+      break;
     case 'all':
       ts = ts.filter(t => !t.done);
       break;
@@ -831,7 +987,7 @@ function counts() {
     today: state.tasks.filter(t => !t.done && (!t.due || t.due <= td)).length,
     calendar: state.tasks.filter(t => !t.done && t.due && t.due > td).length,
     all: state.tasks.filter(t => !t.done).length,
-    done: state.tasks.filter(t => t.done).length,
+    stats: state.tasks.filter(t => t.done).length + (state.logs || []).length,
   };
 }
 
@@ -854,7 +1010,7 @@ function updateHeader() {
     const l = listById(state.list);
     title = (l ? l.icon + ' ' + l.name : '📋 清单');
   } else {
-    const map = { today: '⭐ 今天', calendar: '📅 日历', all: '📥 全部', done: '✅ 已完成' };
+    const map = { today: '⭐ 今天', calendar: '📅 日历', all: '📥 全部', stats: '📊 统计' };
     title = map[state.view] || '📋 全部';
   }
   $('headerTitle').textContent = title;
@@ -893,6 +1049,7 @@ function renderTasks() {
       calendar: ['📅','这天没有任务','点击右上角 + 为这天添加任务'],
       all: ['📋','还没有任务','点击上方输入框创建第一个任务'],
       done: ['🏆','还没有完成的任务','完成一个任务，它会出现在这里'],
+      stats: ['📊','统计','完成更多任务来丰富你的数据'],
     };
     const e = em[state.view] || em.all;
     el.innerHTML = '<div class="empty"><div class="empty-icon">'+e[0]+'</div><div class="empty-title">'+e[1]+'</div><div class="empty-desc">'+e[2]+'</div></div>';
@@ -910,8 +1067,11 @@ function renderTasks() {
     if (over.length) groups.push(['⚠️ 已过期', over]);
     if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
     if (noDate.length) groups.push(['📋 待安排', noDate]);
+  } else if (state.view === 'stats') {
+    // Stats view: heatmap + summary + completed list
+    el.innerHTML = renderStatsView();
+    return;
   } else if (state.view === 'done') {
-    // Group by today / this week / older
     const now = Date.now();
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
     const weekAgo = todayStart.getTime() - 7*86400000;
@@ -998,6 +1158,219 @@ function taskHTML(t) {
       '<button class="task-act del" data-act="delete" aria-label="删除">×</button>' +
     '</div>' +
   '</div>';
+}
+
+// ─── Activity Logging ────────────────────────
+function logActivity(type) {
+  const d = today();
+  const existing = (state.logs || []).find(l => l.date === d && l.type === type);
+  if (existing) existing.count++;
+  else (state.logs || []).push({ date: d, type: type, count: 1 });
+  if (!state.logs) state.logs = [];
+  save();
+}
+
+// ─── Timer ────────────────────────────────────
+function openTimer() {
+  $('timerOverlay').classList.add('show');
+  $('timerDialog').style.display = 'block';
+  timerSecs = state.timerMins * 60;
+  timerRunning = false;
+  updateTimerDisplay();
+  updateTimerPresets();
+  $('timerLabel').textContent = '准备开始';
+  updateTimerSessions();
+}
+function closeTimer() {
+  if (timerRunning) stopTimer();
+  $('timerOverlay').classList.remove('show');
+  $('timerDialog').style.display = 'none';
+}
+function updateTimerDisplay() {
+  const m = Math.floor(timerSecs / 60);
+  const s = timerSecs % 60;
+  $('timerDisplay').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  const total = state.timerMins * 60;
+  const progress = total > 0 ? (timerSecs / total) : 0;
+  const circ = 326.7; // 2*PI*52
+  $('timerProgress').style.strokeDashoffset = circ * (1 - progress);
+}
+function updateTimerPresets() {
+  document.querySelectorAll('.timer-preset').forEach(b => {
+    b.classList.toggle('active', +b.dataset.min === state.timerMins);
+  });
+}
+function updateTimerSessions() {
+  const todaySessions = (state.logs || []).filter(l => l.date === today() && l.type === 'focus').reduce((s, l) => s + l.count, 0);
+  $('timerSessions').textContent = '今日专注：' + todaySessions + ' 次';
+}
+function startTimer() {
+  if (timerRunning) return;
+  timerRunning = true;
+  $('timerStart').textContent = '⏸ 暂停';
+  $('timerLabel').textContent = '专注中…';
+  timerInterval = setInterval(() => {
+    timerSecs--;
+    updateTimerDisplay();
+    if (timerSecs <= 0) {
+      stopTimer();
+      logActivity('focus');
+      updateTimerSessions();
+      $('timerLabel').textContent = '完成！';
+      // Vibrate on mobile
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      renderAll();
+    }
+  }, 1000);
+}
+function stopTimer() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  $('timerStart').textContent = '▶ 开始';
+}
+function resetTimer() {
+  stopTimer();
+  timerSecs = state.timerMins * 60;
+  updateTimerDisplay();
+  $('timerLabel').textContent = '准备开始';
+}
+
+// ─── Stats / Heatmap ─────────────────────────
+function renderStatsView() {
+  const logs = state.logs || [];
+  const doneTasks = state.tasks.filter(t => t.done);
+
+  // Activity heatmap: last 12 weeks
+  const todayDate = new Date();
+  const endDate = new Date(todayDate);
+  const startDate = new Date(todayDate);
+  startDate.setDate(startDate.getDate() - 83); // 12 weeks
+
+  // Build activity map: {dateStr: count}
+  const activity = {};
+  logs.forEach(l => { activity[l.date] = (activity[l.date] || 0) + l.count; });
+  doneTasks.forEach(t => {
+    const d = t.due || (t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : '');
+    if (d) activity[d] = (activity[d] || 0) + 1;
+  });
+
+  // Generate 12-week grid (7 rows × 12 cols)
+  const days = [];
+  let cursor = new Date(startDate);
+  // Align to Monday
+  const dayOfWeek = cursor.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  cursor.setDate(cursor.getDate() + mondayOffset);
+
+  while (cursor <= endDate) {
+    const ds = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
+    days.push({ date: ds, day: cursor.getDay(), count: activity[ds] || 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  // Build grid (columns = weeks)
+  const cols = [];
+  let currentCol = [];
+  days.forEach(d => {
+    currentCol.push(d);
+    if (d.day === 0 || currentCol.length === 7) { // Sunday = end of week
+      cols.push(currentCol);
+      currentCol = [];
+    }
+  });
+  if (currentCol.length) cols.push(currentCol);
+
+  // Each col: pad to 7 cells (Mon=0, Tue=1, ..., Sun=6)
+  // The first col might start mid-week, pad top with nulls
+  const fullCols = cols.map((col, ci) => {
+    const padded = [];
+    // Determine what day of week the first entry is
+    const firstDay = col[0].day; // 0=Sun, 1=Mon...
+    // We want Mon(1) at top, Sun(0) at bottom
+    // Pad top
+    const monIdx = firstDay === 0 ? 6 : firstDay - 1; // 0 for Mon, 6 for Sun
+    for (let i = 0; i < monIdx; i++) padded.push(null);
+    col.forEach(d => padded.push(d));
+    while (padded.length < 7) padded.push(null);
+    return padded;
+  });
+
+  function level(c) {
+    if (c === 0) return '';
+    if (c <= 1) return 'l1';
+    if (c <= 3) return 'l2';
+    if (c <= 6) return 'l3';
+    return 'l4';
+  }
+
+  let html = '';
+
+  // Summary cards
+  const todaySessions = logs.filter(l => l.date === today() && l.type === 'focus').reduce((s, l) => s + l.count, 0);
+  const totalSessions = logs.filter(l => l.type === 'focus').reduce((s, l) => s + l.count, 0);
+  const totalDone = doneTasks.length;
+  const streakDays = calcStreak(activity);
+
+  html += '<div class="stats-summary">';
+  html += '<div class="stats-card"><div class="num">' + totalDone + '</div><div class="lbl">已完成</div></div>';
+  html += '<div class="stats-card"><div class="num">' + totalSessions + '</div><div class="lbl">专注次数</div></div>';
+  html += '<div class="stats-card"><div class="num">' + todaySessions + '</div><div class="lbl">今日专注</div></div>';
+  html += '<div class="stats-card"><div class="num">' + streakDays + '天</div><div class="lbl">连续活跃</div></div>';
+  html += '</div>';
+
+  // Heatmap
+  html += '<div class="heatmap-wrap"><div class="heatmap-grid">';
+  fullCols.forEach(col => {
+    html += '<div class="heatmap-col">';
+    col.forEach(d => {
+      if (!d) html += '<div class="heatmap-cell" style="opacity:0"></div>';
+      else html += '<div class="heatmap-cell ' + level(d.count) + '" title="' + d.date + ': ' + d.count + '"></div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Month labels
+  html += '<div class="heatmap-labels">';
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  let lastMonth = -1;
+  fullCols.forEach((col, ci) => {
+    const realDay = col.find(d => d !== null);
+    if (realDay) {
+      const m = parseInt(realDay.date.split('-')[1]);
+      if (m !== lastMonth) {
+        html += '<span class="heatmap-month">' + months[m-1] + '</span>';
+        lastMonth = m;
+      }
+    }
+    html += '<span style="width:14px;flex-shrink:0"></span>';
+  });
+  html += '</div></div>';
+
+  // Legend
+  html += '<div class="heatmap-legend">少 <span class="dot"></span> <span class="dot l1"></span> <span class="dot l2"></span> <span class="dot l3"></span> <span class="dot l4"></span> 多</div>';
+
+  // Recent completed tasks
+  const recentDone = doneTasks.slice(-10).reverse();
+  if (recentDone.length) {
+    html += '<div class="group-header">最近完成</div>';
+    recentDone.forEach(t => { html += taskHTML(t); });
+  }
+
+  return html;
+}
+
+function calcStreak(activity) {
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (activity[ds] && activity[ds] > 0) streak++;
+    else break;
+    d.setDate(d.getDate() - 1);
+    if (streak > 365) break; // safety
+  }
+  return streak;
 }
 
 // ─── Calendar ────────────────────────────────
@@ -1120,7 +1493,7 @@ function toggleTask(id) {
   t.done = !t.done;
   t.completedAt = t.done ? Date.now() : 0;
   renderAll();
-  if (t.done && !wasDone) confetti();
+  if (t.done && !wasDone) { confetti(); logActivity('task'); }
 }
 
 function toggleSub(tid, sid) {
@@ -1617,6 +1990,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('meta[name="theme-color"]').content =
       state.theme === 'light' ? '#f5f0eb' : '#1a1815';
   }
+
+  // ── Timer event handlers ──────────────────
+  $('timerBtn').addEventListener('click', openTimer);
+  $('timerClose').addEventListener('click', closeTimer);
+  $('timerOverlay').addEventListener('click', closeTimer);
+  $('timerStart').addEventListener('click', () => {
+    if (timerRunning) { stopTimer(); updateTimerDisplay(); }
+    else startTimer();
+  });
+  $('timerReset').addEventListener('click', () => { resetTimer(); updateTimerDisplay(); });
+
+  document.querySelector('.timer-presets').addEventListener('click', e => {
+    const btn = e.target.closest('.timer-preset');
+    if (!btn) return;
+    state.timerMins = +btn.dataset.min;
+    updateTimerPresets();
+    resetTimer();
+    save();
+  });
 
   $('themeBtn').addEventListener('click', () => {
     state.theme = state.theme === 'light' ? 'dark' : 'light';
