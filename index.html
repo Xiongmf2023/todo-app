@@ -896,7 +896,7 @@ let state = {
     { id: 'shop', name: '购物', color: '#8b5cf6', icon: '🛒' },
   ],
   tasks: [],
-  logs: [],        // {date:'YYYY-MM-DD', type:'task'|'focus', count:1}
+  logs: [],        // {date,time,type,detail,duration,ts}
   view: 'today',   // today | calendar | all | stats
   list: '',        // '' = all lists
   calMonth: null,
@@ -919,6 +919,19 @@ function load() {
       state.lists = d.lists || state.lists;
       state.tasks = d.tasks || [];
       state.logs = d.logs || [];
+      // Migrate old format: {date,type,count} → {date,time,type,detail,duration,ts}
+      state.logs = state.logs.map(l => {
+        if (l.ts) return l; // already new format
+        const label = l.type === 'focus' ? '专注' : '任务';
+        return {
+          date: l.date,
+          time: '--:--',
+          type: l.type,
+          detail: l.count + '次' + label,
+          duration: l.type === 'focus' ? (l.count * 25) : 0,
+          ts: new Date(l.date + 'T12:00:00').getTime(),
+        };
+      });
       state.view = d.view || 'today';
       state.list = d.list || '';
       state.calMonth = d.calMonth || null;
@@ -1089,8 +1102,7 @@ function renderTasks() {
     if (todayTasks.length) groups.push(['📌 今天到期', todayTasks]);
     if (noDate.length) groups.push(['📋 待安排', noDate]);
   } else if (state.view === 'stats') {
-    // Stats view: heatmap + summary + completed list
-    el.innerHTML = renderStatsView();
+    try { el.innerHTML = renderStatsView(); } catch(e) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">统计加载失败</div><div class="empty-desc">试试刷新页面</div></div>'; }
     return;
   } else if (state.view === 'done') {
     const now = Date.now();
@@ -1387,7 +1399,7 @@ function renderStatsView() {
   html += '<div class="heatmap-legend">少 <span class="dot"></span> <span class="dot l1"></span> <span class="dot l2"></span> <span class="dot l3"></span> <span class="dot l4"></span> 多</div>';
 
   // ── History Timeline ─────────────────────
-  const history = [...(state.logs || [])].sort((a, b) => b.ts - a.ts).slice(0, 50);
+  const history = [...(state.logs || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
   if (history.length) {
     html += '<div class="group-header">📜 历史记录</div>';
     html += '<div class="history-list">';
