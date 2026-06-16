@@ -1368,6 +1368,8 @@ function renderStatsView() {
   html += '<div class="stats-card"><div class="num">' + todaySessions + '</div><div class="lbl">今日专注</div></div>';
   html += '<div class="stats-card"><div class="num">' + streakDays + '天</div><div class="lbl">连续活跃</div></div>';
   html += '</div>';
+  // Build marker (hidden, for debugging)
+  html += '<div style="font-size:0.55rem;color:var(--text3);text-align:center;padding:0 0 8px">build: 2026-06-16-v4 · 共' + state.tasks.length + '任务 ' + state.logs.length + '条记录</div>';
 
   // Heatmap
   html += '<div class="heatmap-wrap"><div class="heatmap-grid">';
@@ -1438,6 +1440,9 @@ function renderStatsView() {
     html += '<div class="group-header">✅ 最近完成的任务</div>';
     recentDone.forEach(t => { html += taskHTML(t); });
   }
+
+  // Reset data link
+  html += '<div style="text-align:center;padding:20px"><button onclick="if(confirm(\'确定清除所有数据？此操作不可恢复。\')){localStorage.clear();location.reload();}" style="font-size:0.7rem;color:var(--text3);padding:8px 16px;border-radius:14px;background:var(--hover)">🗑 清除全部数据</button></div>';
 
   return html;
 }
