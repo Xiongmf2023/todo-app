@@ -331,6 +331,58 @@ ul { list-style: none; }
 .sub-del:active { color: var(--red); }
 
 /* ============================================ */
+/* Task Notes (inline)                          */
+/* ============================================ */
+.task-notes {
+  margin-top: 6px;
+  position: relative;
+  z-index: 2;
+}
+.note-preview {
+  font-size: 0.76rem; color: var(--text3);
+  padding: 6px 8px; border-radius: 6px;
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  line-height: 1.35;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+}
+.note-preview:active { background: var(--hover); }
+.note-preview .note-icon { flex-shrink: 0; font-size: 0.7rem; }
+.note-preview .note-text { overflow: hidden; text-overflow: ellipsis; }
+.note-placeholder {
+  font-size: 0.74rem; color: var(--text3);
+  padding: 6px 8px; border-radius: 6px;
+  cursor: pointer;
+  border: 1px dashed var(--border);
+  text-align: center;
+  transition: all 0.15s;
+}
+.note-placeholder:active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.note-expanded {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 6px;
+}
+.note-textarea {
+  width: 100%; min-height: 60px; max-height: 200px;
+  font-size: 0.82rem; line-height: 1.5;
+  padding: 6px 8px; border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  font-family: var(--font);
+}
+.note-textarea::placeholder { color: var(--text3); }
+.note-hint {
+  font-size: 0.65rem; color: var(--text3);
+  padding: 3px 6px 0;
+}
+
+/* ============================================ */
 /* Calendar View                                */
 /* ============================================ */
 .calendar-wrap {
@@ -913,11 +965,24 @@ function taskHTML(t) {
     '</div>';
   }
 
+  // Notes section
+  let notesHTML = '';
+  const hasNotes = t.notes && t.notes.trim();
+  notesHTML = '<div class="task-notes" data-act="expand">';
+  if (hasNotes) {
+    // Truncate preview
+    const preview = t.notes.length > 60 ? t.notes.substring(0, 60) + '…' : t.notes;
+    notesHTML += '<div class="note-preview"><span class="note-icon">📝</span><span class="note-text">' + esc(preview) + '</span></div>';
+  } else {
+    notesHTML += '<div class="note-placeholder">📝 添加笔记…</div>';
+  }
+  notesHTML += '</div>';
+
   return '' +
   '<div class="task-card' + (t.done ? ' done' : '') + '" data-tid="' + t.id + '">' +
     '<div class="swipe-bg"></div>' +
     '<div class="check-circle' + (t.done ? ' checked' : '') + '" data-act="toggle">✓</div>' +
-    '<div class="task-body" data-act="edit">' +
+    '<div class="task-body">' +
       '<div class="task-title">' + esc(t.title) + '</div>' +
       '<div class="task-meta">' +
         (t.priority ? '<span class="meta-priority ' + priCls[t.priority] + '">' + (priLabels[t.priority]||'') + '</span>' : '') +
@@ -926,6 +991,7 @@ function taskHTML(t) {
         (hasSub ? '<span class="meta-sub">☑ ' + doneSub + '/' + t.subs.length + '</span>' : '') +
       '</div>' +
       subsHTML +
+      notesHTML +
     '</div>' +
     '<div class="task-actions">' +
       '<button class="task-act" data-act="edit" aria-label="编辑">✎</button>' +
@@ -1038,6 +1104,7 @@ function addTask(title, opts) {
     due: opts.due || null,
     listId: opts.listId || state.list || 'personal',
     subs: [],
+    notes: '',
     createdAt: Date.now(),
     order: state.tasks.length,
   };
@@ -1299,19 +1366,61 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'delete': deleteTask(tid); break;
       case 'delsub': delSub(tid, sid); break;
       case 'edit': editTask(tid); break;
+      case 'expand': expandNotes(tid, card); break;
     }
   });
 
-  // ── Edit task ─────────────────────────────
+  // ── Notes expand / auto-save ──────────────
+  function expandNotes(tid, card) {
+    const task = state.tasks.find(t => t.id === tid);
+    if (!task) return;
+    const notesEl = card.querySelector('.task-notes');
+    if (!notesEl) return;
+
+    // Check if already expanded
+    if (notesEl.querySelector('.note-textarea')) return;
+
+    const currentText = task.notes || '';
+    notesEl.innerHTML =
+      '<div class="note-expanded">' +
+        '<textarea class="note-textarea" placeholder="写点什么…">' + esc(currentText) + '</textarea>' +
+        '<div class="note-hint">自动保存 · 点击外部收起</div>' +
+      '</div>';
+
+    const textarea = notesEl.querySelector('.note-textarea');
+    textarea.focus();
+
+    // Auto-save on input (debounced)
+    let saveTimer;
+    textarea.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        task.notes = textarea.value;
+        save();
+      }, 600);
+    });
+
+    // Save on blur (tap outside)
+    textarea.addEventListener('blur', () => {
+      clearTimeout(saveTimer);
+      task.notes = textarea.value;
+      save();
+      // Re-render to collapse
+      renderAll();
+    });
+  }
+
+  // ── Edit task (title, subtasks, metadata only) ─
   function editTask(tid) {
     const t = state.tasks.find(x => x.id === tid);
     if (!t) return;
 
     const subLines = (t.subs || []).map(s => (s.done ? '☑ ' : '☐ ') + s.title).join('\n');
     const hints = [
-      '编辑标题后按确定保存',
+      '修改标题，按确定保存',
+      '（点击任务上的 📝 区域可以编辑笔记）',
       subLines ? '\n-- 子任务 --\n' + subLines : '',
-      '\n快捷指令：!!高 !中 !低 | 今天 明天 周一~日 | #清单名',
+      '\n快捷指令：!!高 !中 !低 | 今天 | #清单名',
     ].join('\n');
 
     const result = prompt(hints, t.title);
@@ -1330,7 +1439,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Subtask lines
     const subLinesRaw = lines.slice(1).filter(l =>
       !l.startsWith('!!') && !l.startsWith('!') &&
-      !l.startsWith('#') && !/今天|明天|后天|周[一二三四五六日天]/.test(l)
+      !l.startsWith('#') && !/今天|明天|后天|周[一二三四五六日天]/.test(l) &&
+      !l.startsWith('（点击任务')
     );
     if (subLinesRaw.length > 0) {
       t.subs = subLinesRaw.map(l => ({
