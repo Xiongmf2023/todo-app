@@ -444,6 +444,27 @@ ul { list-style: none; }
 }
 
 /* ============================================ */
+/* History Timeline                             */
+/* ============================================ */
+.history-list { padding: 0 4px; }
+.history-date {
+  font-size: 0.7rem; font-weight: 650; color: var(--text2);
+  padding: 10px 4px 4px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 4px;
+}
+.history-date:first-child { border-top: none; margin-top: 0; }
+.history-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px;
+  font-size: 0.84rem;
+  border-radius: 6px;
+}
+.history-icon { font-size: 0.8rem; flex-shrink: 0; width: 20px; text-align: center; }
+.history-text { flex: 1; color: var(--text); }
+.history-time { font-size: 0.68rem; color: var(--text3); flex-shrink: 0; }
+
+/* ============================================ */
 /* Task Notes (inline)                          */
 /* ============================================ */
 .task-notes {
@@ -987,7 +1008,7 @@ function counts() {
     today: state.tasks.filter(t => !t.done && (!t.due || t.due <= td)).length,
     calendar: state.tasks.filter(t => !t.done && t.due && t.due > td).length,
     all: state.tasks.filter(t => !t.done).length,
-    stats: state.tasks.filter(t => t.done).length + (state.logs || []).length,
+    stats: state.tasks.filter(t => t.done).length + (state.logs || []).filter(l => l.type === 'focus').length,
   };
 }
 
@@ -1161,13 +1182,29 @@ function taskHTML(t) {
 }
 
 // ─── Activity Logging ────────────────────────
-function logActivity(type) {
-  const d = today();
-  const existing = (state.logs || []).find(l => l.date === d && l.type === type);
-  if (existing) existing.count++;
-  else (state.logs || []).push({ date: d, type: type, count: 1 });
+function logEntry(type, detail, duration) {
   if (!state.logs) state.logs = [];
+  const now = new Date();
+  state.logs.push({
+    date: today(),
+    time: String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0'),
+    type: type,       // 'focus' | 'task'
+    detail: detail,   // e.g. '25分钟专注' | '完成任务标题'
+    duration: duration || 0,
+    ts: now.getTime(),
+  });
   save();
+}
+
+// Aggregate logs by date+type for heatmap/counts
+function getLogCount(date, type) {
+  return (state.logs || []).filter(l => l.date === date && l.type === type).length;
+}
+function getTotalFocus() {
+  return (state.logs || []).filter(l => l.type === 'focus').length;
+}
+function getTodayFocus() {
+  return (state.logs || []).filter(l => l.date === today() && l.type === 'focus').length;
 }
 
 // ─── Timer ────────────────────────────────────
@@ -1201,8 +1238,7 @@ function updateTimerPresets() {
   });
 }
 function updateTimerSessions() {
-  const todaySessions = (state.logs || []).filter(l => l.date === today() && l.type === 'focus').reduce((s, l) => s + l.count, 0);
-  $('timerSessions').textContent = '今日专注：' + todaySessions + ' 次';
+  $('timerSessions').textContent = '今日专注：' + getTodayFocus() + ' 次';
 }
 function startTimer() {
   if (timerRunning) return;
@@ -1214,7 +1250,7 @@ function startTimer() {
     updateTimerDisplay();
     if (timerSecs <= 0) {
       stopTimer();
-      logActivity('focus');
+      logEntry('focus', state.timerMins + '分钟专注', state.timerMins);
       updateTimerSessions();
       $('timerLabel').textContent = '完成！';
       // Vibrate on mobile
@@ -1246,11 +1282,11 @@ function renderStatsView() {
   const startDate = new Date(todayDate);
   startDate.setDate(startDate.getDate() - 83); // 12 weeks
 
-  // Build activity map: {dateStr: count}
+  // Build activity map from individual log entries
   const activity = {};
-  logs.forEach(l => { activity[l.date] = (activity[l.date] || 0) + l.count; });
+  logs.forEach(l => { activity[l.date] = (activity[l.date] || 0) + 1; });
   doneTasks.forEach(t => {
-    const d = t.due || (t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : '');
+    const d = t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : (t.due || '');
     if (d) activity[d] = (activity[d] || 0) + 1;
   });
 
@@ -1306,8 +1342,8 @@ function renderStatsView() {
   let html = '';
 
   // Summary cards
-  const todaySessions = logs.filter(l => l.date === today() && l.type === 'focus').reduce((s, l) => s + l.count, 0);
-  const totalSessions = logs.filter(l => l.type === 'focus').reduce((s, l) => s + l.count, 0);
+  const todaySessions = getTodayFocus();
+  const totalSessions = getTotalFocus();
   const totalDone = doneTasks.length;
   const streakDays = calcStreak(activity);
 
@@ -1350,14 +1386,45 @@ function renderStatsView() {
   // Legend
   html += '<div class="heatmap-legend">少 <span class="dot"></span> <span class="dot l1"></span> <span class="dot l2"></span> <span class="dot l3"></span> <span class="dot l4"></span> 多</div>';
 
+  // ── History Timeline ─────────────────────
+  const history = [...(state.logs || [])].sort((a, b) => b.ts - a.ts).slice(0, 50);
+  if (history.length) {
+    html += '<div class="group-header">📜 历史记录</div>';
+    html += '<div class="history-list">';
+
+    let lastDate = '';
+    history.forEach(h => {
+      // Date divider
+      if (h.date !== lastDate) {
+        html += '<div class="history-date">' + h.date + ' ' + getDayOfWeek(h.date) + '</div>';
+        lastDate = h.date;
+      }
+      const icon = h.type === 'focus' ? '⏱️' : '✅';
+      const detail = h.type === 'focus' ? (h.detail || '专注') : esc(h.detail || '完成任务');
+      const dur = h.type === 'focus' && h.duration ? ' <span style="font-size:0.7rem;color:var(--text3))">(' + h.duration + '分钟)</span>' : '';
+      html += '<div class="history-item">' +
+        '<span class="history-icon">' + icon + '</span>' +
+        '<span class="history-text">' + detail + dur + '</span>' +
+        '<span class="history-time">' + h.time + '</span>' +
+      '</div>';
+    });
+
+    html += '</div>';
+  }
+
   // Recent completed tasks
   const recentDone = doneTasks.slice(-10).reverse();
   if (recentDone.length) {
-    html += '<div class="group-header">最近完成</div>';
+    html += '<div class="group-header">✅ 最近完成的任务</div>';
     recentDone.forEach(t => { html += taskHTML(t); });
   }
 
   return html;
+}
+
+function getDayOfWeek(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
 }
 
 function calcStreak(activity) {
@@ -1493,7 +1560,7 @@ function toggleTask(id) {
   t.done = !t.done;
   t.completedAt = t.done ? Date.now() : 0;
   renderAll();
-  if (t.done && !wasDone) { confetti(); logActivity('task'); }
+  if (t.done && !wasDone) { confetti(); logEntry('task', t.title, 0); }
 }
 
 function toggleSub(tid, sid) {
