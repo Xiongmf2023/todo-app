@@ -332,6 +332,90 @@ ul { list-style: none; }
 .sub-del:active { color: var(--red); }
 
 /* ============================================ */
+/* Countdown Cards                              */
+/* ============================================ */
+.countdown-list { padding: 0 4px; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.countdown-card {
+  min-width: 120px; background: var(--surface2);
+  border-radius: var(--radius-sm); padding: 12px;
+  text-align: center; flex-shrink: 0;
+  border: 1px solid var(--border-light);
+}
+.countdown-card .cd-days {
+  font-size: 1.8rem; font-weight: 750; color: var(--accent);
+  line-height: 1;
+}
+.countdown-card .cd-label { font-size: 0.65rem; color: var(--text3); margin: 2px 0 4px; }
+.countdown-card .cd-title { font-size: 0.82rem; font-weight: 550; color: var(--text); }
+.countdown-card .cd-date { font-size: 0.65rem; color: var(--text3); }
+.countdown-add {
+  min-width: 80px; background: none; border: 2px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: var(--text3); cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.countdown-add:active { border-color: var(--accent); color: var(--accent); }
+.cd-del {
+  font-size: 0.6rem; color: var(--text3); margin-top: 4px; display: block;
+  cursor: pointer;
+}
+.cd-del:active { color: var(--red); }
+
+/* ============================================ */
+/* Sudoku                                       */
+/* ============================================ */
+.sudoku-overlay {
+  position: fixed; top:0;left:0;right:0;bottom:0;
+  background: rgba(0,0,0,0.4); z-index:200; display:none;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.sudoku-overlay.show { display: block; }
+.sudoku-dialog {
+  position: fixed; top:50%;left:50%;transform: translate(-50%,-50%);
+  background: var(--surface); border-radius: 20px; padding: 20px;
+  z-index:201; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.sudoku-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:1rem; }
+.sudoku-board {
+  display: grid; grid-template-columns: repeat(9, 1fr);
+  gap: 1px; background: var(--border); border: 2px solid var(--border);
+  border-radius: 4px; margin-bottom: 12px; aspect-ratio: 1;
+}
+.sudoku-cell {
+  aspect-ratio: 1; display:flex; align-items:center; justify-content:center;
+  font-size: 0.95rem; font-weight: 550; background: var(--surface);
+  cursor: pointer; transition: all 0.1s;
+  color: var(--text);
+}
+.sudoku-cell:active { background: var(--hover); }
+.sudoku-cell.given { font-weight: 700; color: var(--text); }
+.sudoku-cell.selected { background: var(--accent-bg); color: var(--accent); }
+.sudoku-cell.error { color: var(--red); }
+.sudoku-cell.hint { background: var(--green-bg); }
+.sudoku-cell.same-num { background: var(--accent-bg); opacity: 0.6; }
+/* Thick borders for 3x3 boxes */
+.sudoku-cell.br { border-right: 2px solid var(--border); }
+.sudoku-cell.bb { border-bottom: 2px solid var(--border); }
+.sudoku-nums {
+  display: flex; gap: 4px; justify-content: center; margin-bottom: 12px;
+}
+.sudoku-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 0.9rem; font-weight: 600; background: var(--hover);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.1s;
+}
+.sudoku-num:active { background: var(--accent); color: white; transform: scale(0.9); }
+.sudoku-num.used { opacity: 0.25; }
+.sudoku-actions { display:flex; gap:6px; justify-content:center; }
+.sudoku-act {
+  padding: 8px 14px; border-radius: 16px; font-size: 0.75rem;
+  background: var(--hover); color: var(--text2); font-weight: 550;
+  transition: all 0.1s;
+}
+.sudoku-act:active { transform: scale(0.94); background: var(--active); }
+
+/* ============================================ */
 /* Timer Overlay                                */
 /* ============================================ */
 .timer-overlay {
@@ -774,6 +858,7 @@ ul { list-style: none; }
   <h1 id="headerTitle">📋 今天</h1>
   <button class="header-btn" id="searchBtn" aria-label="搜索">🔍</button>
   <button class="header-btn" id="timerBtn" aria-label="计时">⏱️</button>
+  <button class="header-btn" id="sudokuBtn" aria-label="数独">🧩</button>
   <button class="header-btn" id="themeBtn" aria-label="主题">🌓</button>
   <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
 </div>
@@ -880,6 +965,22 @@ ul { list-style: none; }
   <div class="timer-sessions" id="timerSessions"></div>
 </div>
 
+<!-- Sudoku overlay -->
+<div class="sudoku-overlay" id="sudokuOverlay"></div>
+<div class="sudoku-dialog" id="sudokuDialog" style="display:none;">
+  <div class="sudoku-header">
+    <span style="font-weight:650">🧩 数独</span>
+    <button id="sudokuClose" style="font-size:1.1rem;padding:4px 8px">✕</button>
+  </div>
+  <div class="sudoku-board" id="sudokuBoard"></div>
+  <div class="sudoku-nums" id="sudokuNums"></div>
+  <div class="sudoku-actions">
+    <button class="sudoku-act" id="sudokuNew">🔄 新游戏</button>
+    <button class="sudoku-act" id="sudokuHint">💡 提示</button>
+    <button class="sudoku-act" id="sudokuCheck">✅ 检查</button>
+  </div>
+</div>
+
 <!-- Confetti -->
 <canvas id="confetti"></canvas>
 
@@ -898,6 +999,7 @@ let state = {
   ],
   tasks: [],
   logs: [],        // {date,time,type,detail,duration,ts}
+  countdowns: [],  // {id, title, date: 'YYYY-MM-DD'}
   view: 'today',   // today | calendar | all | stats
   list: '',        // '' = all lists
   calMonth: null,
@@ -920,6 +1022,7 @@ function load() {
       state.lists = d.lists || state.lists;
       state.tasks = d.tasks || [];
       state.logs = d.logs || [];
+      state.countdowns = d.countdowns || [];
       // Migrate old format: {date,type,count} → {date,time,type,detail,duration,ts}
       state.logs = state.logs.map(l => {
         if (l.ts) return l; // already new format
@@ -1379,6 +1482,11 @@ function renderStatsView() {
   html += '<div class="stats-card"><div class="num">' + todaySessions + '</div><div class="lbl">今日专注</div></div>';
   html += '<div class="stats-card"><div class="num">' + streakDays + '天</div><div class="lbl">连续活跃</div></div>';
   html += '</div>';
+
+  // Countdown section
+  html += '<div class="group-header">⏳ 倒数日</div>';
+  html += renderCountdowns();
+
   // Build marker (hidden, for debugging)
   html += '<div style="font-size:0.55rem;color:var(--text3);text-align:center;padding:0 0 8px">build: 2026-06-16-v4 · 共' + state.tasks.length + '任务 ' + state.logs.length + '条记录</div>';
 
@@ -1474,6 +1582,154 @@ function calcStreak(activity) {
     if (streak > 365) break; // safety
   }
   return streak;
+}
+
+// ─── Countdown ────────────────────────────────
+function getCountdownDays(targetDate) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const target = new Date(targetDate + 'T00:00:00');
+  return Math.ceil((target - now) / 86400000);
+}
+
+function renderCountdowns() {
+  const cds = state.countdowns || [];
+  let html = '<div class="countdown-list">';
+  cds.forEach(c => {
+    const days = getCountdownDays(c.date);
+    const label = days > 0 ? '还有' : days === 0 ? '就是今天！' : Math.abs(days) + '天前';
+    const dClass = days <= 3 && days > 0 ? ' style=\"color:var(--red)\"' : '';
+    html += '<div class="countdown-card">';
+    html += '<span class=\"cd-del\" data-cd-del=\"' + c.id + '\">× 删除</span>';
+    html += '<div class=\"cd-days\"' + dClass + '>' + (days > 0 ? days : Math.abs(days)) + '</div>';
+    html += '<div class=\"cd-label\">' + (days > 0 ? '天' : '已过') + '</div>';
+    html += '<div class=\"cd-title\">' + esc(c.title) + '</div>';
+    html += '<div class=\"cd-date\">' + c.date + '</div>';
+    html += '</div>';
+  });
+  html += '<div class=\"countdown-card countdown-add\" data-cd-add=\"1\">+</div>';
+  html += '</div>';
+  return html;
+}
+
+// ─── Sudoku ───────────────────────────────────
+let sudoku = { board: [], solution: [], selR: -1, selC: -1, given: [] };
+
+function generateSudoku() {
+  // Generate complete board via backtracking
+  const board = Array.from({length:9}, () => Array(9).fill(0));
+  function isValid(b, r, c, n) {
+    for (let i = 0; i < 9; i++) {
+      if (b[r][i] === n || b[i][c] === n) return false;
+      const br = Math.floor(r/3)*3 + Math.floor(i/3);
+      const bc = Math.floor(c/3)*3 + i%3;
+      if (b[br][bc] === n) return false;
+    }
+    return true;
+  }
+  function fill(b) {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (b[r][c] === 0) {
+          const nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+          for (const n of nums) {
+            if (isValid(b, r, c, n)) { b[r][c] = n; if (fill(b)) return true; b[r][c] = 0; }
+          }
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+  fill(board);
+  const solution = board.map(r => [...r]);
+
+  // Remove cells (difficulty: 40 empty = medium)
+  const given = Array.from({length:9}, () => Array(9).fill(true));
+  let toRemove = 40;
+  while (toRemove > 0) {
+    const r = Math.floor(Math.random() * 9);
+    const c = Math.floor(Math.random() * 9);
+    if (given[r][c]) { given[r][c] = false; toRemove--; }
+  }
+
+  // Create puzzle by clearing non-given cells
+  const puzzle = board.map((row, r) => row.map((n, c) => given[r][c] ? n : 0));
+
+  sudoku.board = puzzle;
+  sudoku.solution = solution;
+  sudoku.given = given;
+  sudoku.selR = -1;
+  sudoku.selC = -1;
+}
+
+function renderSudoku() {
+  let html = '';
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      let cls = 'sudoku-cell';
+      if (c === 2 || c === 5) cls += ' br';
+      if (r === 2 || r === 5) cls += ' bb';
+      if (sudoku.given[r] && sudoku.given[r][c]) cls += ' given';
+      if (r === sudoku.selR && c === sudoku.selC) cls += ' selected';
+      if (sudoku.selR >= 0 && sudoku.board[sudoku.selR] && sudoku.board[sudoku.selR][sudoku.selC] === sudoku.board[r][c] && sudoku.board[r][c] !== 0 && !(r === sudoku.selR && c === sudoku.selC)) cls += ' same-num';
+      const val = sudoku.board[r][c] || '';
+      html += '<div class=\"' + cls + '\" data-sr=\"' + r + '\" data-sc=\"' + c + '\">' + val + '</div>';
+    }
+  }
+  $('sudokuBoard').innerHTML = html;
+
+  // Number buttons
+  let numsHTML = '';
+  for (let n = 1; n <= 9; n++) {
+    // Count how many of this number are placed
+    let count = 0;
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      if (sudoku.board[r][c] === n) count++;
+    }
+    numsHTML += '<div class=\"sudoku-num' + (count >= 9 ? ' used' : '') + '\" data-sn=\"' + n + '\">' + n + '</div>';
+  }
+  $('sudokuNums').innerHTML = numsHTML;
+}
+
+function placeSudokuNum(n) {
+  if (sudoku.selR < 0 || sudoku.selC < 0) return;
+  if (sudoku.given[sudoku.selR][sudoku.selC]) return; // can't change given
+  if (sudoku.board[sudoku.selR][sudoku.selC] === n) { sudoku.board[sudoku.selR][sudoku.selC] = 0; }
+  else sudoku.board[sudoku.selR][sudoku.selC] = n;
+  renderSudoku();
+  if (checkSudokuWin()) { setTimeout(() => { alert('🎉 恭喜完成数独！'); }, 200); }
+}
+
+function checkSudokuWin() {
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+    if (sudoku.board[r][c] !== sudoku.solution[r][c]) return false;
+  }
+  return true;
+}
+
+function sudokuHint() {
+  // Find an empty or wrong cell
+  const wrong = [];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+    if (sudoku.board[r][c] !== sudoku.solution[r][c]) wrong.push([r,c]);
+  }
+  if (wrong.length === 0) return;
+  const [r, c] = wrong[Math.floor(Math.random() * wrong.length)];
+  sudoku.board[r][c] = sudoku.solution[r][c];
+  sudoku.selR = r; sudoku.selC = c;
+  renderSudoku();
+}
+
+function openSudoku() {
+  if (!sudoku.board.length || sudoku.board.every(r => r.every(c => c === 0))) generateSudoku();
+  renderSudoku();
+  $('sudokuOverlay').classList.add('show');
+  $('sudokuDialog').style.display = 'block';
+}
+
+function closeSudoku() {
+  $('sudokuOverlay').classList.remove('show');
+  $('sudokuDialog').style.display = 'none';
 }
 
 // ─── Calendar ────────────────────────────────
@@ -2117,6 +2373,58 @@ document.addEventListener('DOMContentLoaded', () => {
     state.theme = state.theme === 'light' ? 'dark' : 'light';
     applyTheme();
     save();
+  });
+
+  // ── Sudoku handlers ───────────────────────
+  $('sudokuBtn').addEventListener('click', openSudoku);
+  $('sudokuClose').addEventListener('click', closeSudoku);
+  $('sudokuOverlay').addEventListener('click', closeSudoku);
+
+  $('sudokuBoard').addEventListener('click', e => {
+    const cell = e.target.closest('.sudoku-cell');
+    if (!cell) return;
+    sudoku.selR = +cell.dataset.sr;
+    sudoku.selC = +cell.dataset.sc;
+    renderSudoku();
+  });
+
+  $('sudokuNums').addEventListener('click', e => {
+    const btn = e.target.closest('.sudoku-num');
+    if (!btn) return;
+    placeSudokuNum(+btn.dataset.sn);
+  });
+
+  $('sudokuNew').addEventListener('click', () => { generateSudoku(); renderSudoku(); });
+  $('sudokuHint').addEventListener('click', sudokuHint);
+  $('sudokuCheck').addEventListener('click', () => {
+    let errs = 0;
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      if (sudoku.board[r][c] && sudoku.board[r][c] !== sudoku.solution[r][c]) errs++;
+    }
+    if (errs === 0 && checkSudokuWin()) alert('🎉 全部正确！恭喜！');
+    else alert('有 ' + errs + ' 个格子不对，再检查一下吧');
+  });
+
+  // ── Countdown handlers (delegated from taskList) ──
+  taskList.addEventListener('click', e => {
+    const addBtn = e.target.closest('[data-cd-add]');
+    if (addBtn) {
+      const title = prompt('倒数日名称（如：生日、考试）：');
+      if (!title || !title.trim()) return;
+      const date = prompt('目标日期（格式：2026-12-25）：');
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+      if (!state.countdowns) state.countdowns = [];
+      state.countdowns.push({ id: 'cd_' + Date.now(), title: title.trim(), date: date.trim() });
+      renderAll();
+      return;
+    }
+    const delBtn = e.target.closest('[data-cd-del]');
+    if (delBtn) {
+      const cid = delBtn.dataset.cdDel;
+      state.countdowns = (state.countdowns || []).filter(c => c.id !== cid);
+      renderAll();
+      return;
+    }
   });
 
   // ── Swipe gestures ────────────────────────
