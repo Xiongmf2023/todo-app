@@ -460,6 +460,14 @@ ul { list-style: none; }
 }
 .timer-preset:active { transform: scale(0.94); }
 .timer-preset.active { background: var(--accent); color: white; }
+.timer-custom {
+  width: 56px; padding: 6px 4px; border-radius: 16px;
+  font-size: 0.78rem; text-align: center;
+  background: var(--hover); color: var(--text2);
+  font-weight: 550; border: 2px solid transparent;
+}
+.timer-custom:focus { border-color: var(--accent); background: var(--surface); }
+.timer-custom::placeholder { color: var(--text3); font-size: 0.7rem; }
 .timer-controls { display: flex; gap: 8px; justify-content: center; }
 .timer-ctrl-btn {
   width: 48px; height: 48px; border-radius: 50%;
@@ -979,6 +987,7 @@ ul { list-style: none; }
     <button class="timer-preset" data-min="15">15分</button>
     <button class="timer-preset" data-min="45">45分</button>
     <button class="timer-preset" data-min="10">10分</button>
+    <input type="number" class="timer-custom" id="timerCustom" placeholder="自定义" min="1" max="120" value="">
   </div>
   <div class="timer-pet" id="timerPet">🐱</div>
   <div class="timer-controls">
@@ -1494,6 +1503,7 @@ function renderStatsView() {
   // Build activity map: sum focus MINUTES per day, +1 per task done
   const activity = {};
   const focusMinutes = {}; // per-day focus minutes
+  state._focusMinutes = focusMinutes; // expose for click handler
   logs.forEach(l => {
     if (l.type === 'focus') {
       const mins = l.duration || 25; // default 25 min per session
@@ -2495,10 +2505,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('timerReset').addEventListener('click', () => { resetTimer(); updateTimerDisplay(); });
 
+  const timerCustomEl = $('timerCustom');
+  timerCustomEl.addEventListener('input', () => {
+    const v = parseInt(timerCustomEl.value);
+    if (v && v >= 1 && v <= 120) {
+      state.timerMins = v;
+      updateTimerPresets();
+      resetTimer();
+      save();
+    }
+  });
+  timerCustomEl.addEventListener('focus', () => { timerCustomEl.select(); });
+
   document.querySelector('.timer-presets').addEventListener('click', e => {
     const btn = e.target.closest('.timer-preset');
     if (!btn) return;
     state.timerMins = +btn.dataset.min;
+    timerCustomEl.value = '';
     updateTimerPresets();
     resetTimer();
     save();
@@ -2571,7 +2594,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hmCell = e.target.closest('[data-hm-date]');
     if (hmCell) {
       const ds = hmCell.dataset.hmDate;
-      const mins = focusMinutes[ds] || 0;
+      const mins = (state._focusMinutes && state._focusMinutes[ds]) || 0;
       const tasksDone = state.tasks.filter(t => t.completedAt && new Date(t.completedAt).toISOString().split('T')[0] === ds).length;
       $('hmInfo').style.display = 'block';
       $('hmInfo').textContent = ds + ' · 专注' + mins + '分钟 · 完成' + tasksDone + '个任务';
