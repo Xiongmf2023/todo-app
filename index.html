@@ -135,6 +135,30 @@ ul { list-style: none; }
 .header-btn:active { transform: scale(0.94); background: var(--hover); }
 
 /* ============================================ */
+/* Menu Dropdown                                */
+/* ============================================ */
+.menu-overlay {
+  position: fixed; top:0;left:0;right:0;bottom:0;
+  background: rgba(0,0,0,0.2); z-index:150; display:none;
+}
+.menu-overlay.show { display: block; }
+.menu-drop {
+  position: fixed; top: 60px; right: 10px;
+  background: var(--surface); border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  z-index: 151; display: none;
+  padding: 6px; min-width: 160px;
+}
+.menu-drop.show { display: block; }
+.menu-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 12px 14px; border-radius: 12px;
+  font-size: 0.88rem; color: var(--text2);
+  transition: background 0.1s; cursor: pointer;
+}
+.menu-item:active { background: var(--hover); }
+
+/* ============================================ */
 /* Progress bar                                 */
 /* ============================================ */
 .progress-wrap {
@@ -451,23 +475,23 @@ ul { list-style: none; }
 }
 .timer-time { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .timer-label { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
-.timer-presets { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.timer-presets { display: flex; gap: 4px; justify-content: center; margin-bottom: 12px; flex-wrap: nowrap; }
 .timer-preset {
-  padding: 6px 14px; border-radius: 16px;
-  font-size: 0.78rem; font-weight: 550;
+  padding: 5px 10px; border-radius: 14px;
+  font-size: 0.72rem; font-weight: 550; white-space: nowrap;
   background: var(--hover); color: var(--text2);
-  transition: all 0.15s;
+  transition: all 0.15s; flex-shrink: 0;
 }
 .timer-preset:active { transform: scale(0.94); }
 .timer-preset.active { background: var(--accent); color: white; }
 .timer-custom {
-  width: 56px; padding: 6px 4px; border-radius: 16px;
-  font-size: 0.78rem; text-align: center;
+  width: 50px; padding: 5px 2px; border-radius: 14px;
+  font-size: 0.72rem; text-align: center; white-space: nowrap;
   background: var(--hover); color: var(--text2);
-  font-weight: 550; border: 2px solid transparent;
+  font-weight: 550; border: 2px solid transparent; flex-shrink: 0;
 }
 .timer-custom:focus { border-color: var(--accent); background: var(--surface); }
-.timer-custom::placeholder { color: var(--text3); font-size: 0.7rem; }
+.timer-custom::placeholder { color: var(--text3); font-size: 0.62rem; }
 .timer-controls { display: flex; gap: 8px; justify-content: center; }
 .timer-ctrl-btn {
   width: 48px; height: 48px; border-radius: 50%;
@@ -915,12 +939,18 @@ ul { list-style: none; }
 <!-- Header -->
 <div class="app-header">
   <h1 id="headerTitle">📋 今天</h1>
-  <button class="header-btn" id="searchBtn" aria-label="搜索">🔍</button>
-  <button class="header-btn" id="timerBtn" aria-label="计时">⏱️</button>
-  <button class="header-btn" id="refreshBtn" aria-label="刷新">🔄</button>
-  <button class="header-btn" id="sudokuBtn" aria-label="数独">🧩</button>
-  <button class="header-btn" id="themeBtn" aria-label="主题">🌓</button>
   <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
+  <button class="header-btn" id="menuBtn" aria-label="菜单">⋯</button>
+</div>
+
+<!-- Menu dropdown -->
+<div class="menu-overlay" id="menuOverlay"></div>
+<div class="menu-drop" id="menuDrop">
+  <button class="menu-item" data-menu="refresh">🔄 刷新同步</button>
+  <button class="menu-item" data-menu="search">🔍 搜索任务</button>
+  <button class="menu-item" data-menu="timer">⏱️ 专注计时</button>
+  <button class="menu-item" data-menu="sudoku">🧩 数独游戏</button>
+  <button class="menu-item" data-menu="theme">🌓 切换主题</button>
 </div>
 
 <!-- Progress -->
@@ -1083,6 +1113,19 @@ let state = {
 let timerSecs = 0;
 let timerRunning = false;
 let timerInterval = null;
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch(e) { /* not supported or denied */ }
+}
+async function releaseWakeLock() {
+  if (wakeLock) { try { await wakeLock.release(); } catch(e) {} wakeLock = null; }
+}
 
 function load() {
   try {
@@ -1430,6 +1473,7 @@ function openTimer() {
 
 function closeTimer() {
   if (timerRunning) stopAndRecord();
+  releaseWakeLock();
   $('timerOverlay').classList.remove('show');
   $('timerDialog').style.display = 'none';
 }
@@ -1458,6 +1502,7 @@ function startTimer() {
   if (timerRunning) return;
   timerRunning = true;
   timerStartMs = Date.now();
+  requestWakeLock();
   $('timerStart').textContent = '⏸ 暂停';
   $('timerLabel').textContent = '专注中…';
   $('timerStop').style.display = '';
@@ -1482,6 +1527,7 @@ function startTimer() {
 function stopTimer(full = false) {
   timerRunning = false;
   clearInterval(timerInterval);
+  releaseWakeLock();
   $('timerStart').textContent = '▶ 开始';
   if (full) {
     const elapsedMin = state.timerMins - Math.floor(timerSecs / 60);
@@ -1496,11 +1542,11 @@ function stopTimer(full = false) {
 }
 
 function stopAndRecord() {
-  // Record partial session
   const elapsed = Math.floor((Date.now() - timerStartMs) / 1000);
   const elapsedMin = Math.max(1, Math.round(elapsed / 60));
   clearInterval(timerInterval);
   timerRunning = false;
+  releaseWakeLock();
   logEntry('focus', elapsedMin + '分钟专注', elapsedMin);
   updateTimerSessions();
   $('timerLabel').textContent = '已记录 ' + elapsedMin + ' 分钟';
@@ -2437,7 +2483,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchBox.style.display = 'none';
   }
 
-  $('searchBtn').addEventListener('click', openSearch);
   $('searchClose').addEventListener('click', closeSearch);
   searchOverlay.addEventListener('click', closeSearch);
 
@@ -2464,20 +2509,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Theme ──────────────────────────────────
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.theme);
-    $('themeBtn').textContent = state.theme === 'light' ? '🌙' : '☀️';
     document.querySelector('meta[name="theme-color"]').content =
       state.theme === 'light' ? '#f5f0eb' : '#1a1815';
   }
 
-  // ── Refresh button ────────────────────────
-  $('refreshBtn').addEventListener('click', () => {
-    load(); // re-read from localStorage
-    renderAll();
-    addInput.focus();
+  // ── Menu ──────────────────────────────────
+  const menuOverlay = $('menuOverlay');
+  const menuDrop = $('menuDrop');
+  $('menuBtn').addEventListener('click', () => {
+    menuOverlay.classList.toggle('show');
+    menuDrop.classList.toggle('show');
+  });
+  menuOverlay.addEventListener('click', () => {
+    menuOverlay.classList.remove('show');
+    menuDrop.classList.remove('show');
+  });
+  menuDrop.addEventListener('click', e => {
+    const item = e.target.closest('.menu-item');
+    if (!item) return;
+    const action = item.dataset.menu;
+    menuOverlay.classList.remove('show');
+    menuDrop.classList.remove('show');
+    switch (action) {
+      case 'refresh': load(); renderAll(); break;
+      case 'search': openSearch(); break;
+      case 'timer': openTimer(); break;
+      case 'sudoku': openSudoku(); break;
+      case 'theme':
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+        applyTheme();
+        save();
+        break;
+    }
   });
 
   // ── Timer event handlers ──────────────────
-  $('timerBtn').addEventListener('click', openTimer);
   $('timerClose').addEventListener('click', closeTimer);
   $('timerOverlay').addEventListener('click', closeTimer);
   $('timerStart').addEventListener('click', () => {
@@ -2511,14 +2577,7 @@ document.addEventListener('DOMContentLoaded', () => {
     save();
   });
 
-  $('themeBtn').addEventListener('click', () => {
-    state.theme = state.theme === 'light' ? 'dark' : 'light';
-    applyTheme();
-    save();
-  });
-
   // ── Sudoku handlers ───────────────────────
-  $('sudokuBtn').addEventListener('click', openSudoku);
   $('sudokuClose').addEventListener('click', closeSudoku);
   $('sudokuOverlay').addEventListener('click', closeSudoku);
 
