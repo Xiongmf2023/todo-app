@@ -507,18 +507,27 @@ ul { list-style: none; }
   -webkit-overflow-scrolling: touch;
 }
 .heatmap-grid {
-  display: flex; gap: 3px;
+  display: flex; gap: 4px;
   min-width: fit-content;
+  padding: 4px 0;
 }
 .heatmap-col {
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .heatmap-cell {
-  width: 14px; height: 14px;
-  border-radius: 3px;
+  width: 18px; height: 18px;
+  border-radius: 4px;
   background: var(--hover);
-  transition: background 0.2s;
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
 }
+/* Larger hit target */
+.heatmap-cell::after {
+  content: '';
+  position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+}
+.heatmap-cell:active { transform: scale(1.3); box-shadow: 0 0 0 3px var(--accent-bg); }
 .heatmap-cell.l1 { background: var(--accent-bg); }
 .heatmap-cell.l2 { background: var(--accent); opacity: 0.5; }
 .heatmap-cell.l3 { background: var(--accent); opacity: 0.75; }
@@ -1583,7 +1592,7 @@ function renderStatsView() {
   html += '</div>';
 
   // Countdown section
-  html += '<div id="hmInfo" style="display:none;font-size:0.7rem;color:var(--accent);text-align:center;padding:4px 8px 0;font-weight:550"></div>';
+  html += '<div id="hmInfo" style="display:none;font-size:0.75rem;color:var(--accent);text-align:center;padding:6px 12px;margin:6px 8px 0;background:var(--accent-bg);border-radius:12px;font-weight:550"></div>';
 
   html += '<div class="group-header">⏳ 倒数日</div>';
   html += renderCountdowns();
