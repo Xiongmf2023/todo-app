@@ -1051,7 +1051,6 @@ ul { list-style: none; }
   <div class="timer-controls">
     <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
     <button class="timer-ctrl-btn" id="timerStop" style="display:none">⏹ 停止</button>
-    <button class="timer-ctrl-btn" id="timerClose">✕</button>
   </div>
   <div class="timer-sessions" id="timerSessions"></div>
 </div>
@@ -2562,7 +2561,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Timer event handlers ──────────────────
-  $('timerClose').addEventListener('click', closeTimer);
   $('timerOverlay').addEventListener('click', closeTimer);
   $('timerStart').addEventListener('click', () => {
     if (timerRunning) { stopTimer(); updateTimerDisplay(); }
