@@ -1042,15 +1042,15 @@ ul { list-style: none; }
     </div>
   </div>
   <div class="timer-presets">
-    <button class="timer-preset active" data-min="25">25分</button>
-    <button class="timer-preset" data-min="15">15分</button>
-    <button class="timer-preset" data-min="45">45分</button>
-    <button class="timer-preset" data-min="10">10分</button>
-    <input type="number" class="timer-custom" id="timerCustom" placeholder="自定义" min="1" max="120" value="">
+    <button class="timer-preset active" data-min="25">25m</button>
+    <button class="timer-preset" data-min="15">15m</button>
+    <button class="timer-preset" data-min="45">45m</button>
+    <button class="timer-preset" data-min="10">10m</button>
+    <input type="number" class="timer-custom" id="timerCustom" placeholder="min" min="1" max="120" value="">
   </div>
   <div class="timer-controls">
-    <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
-    <button class="timer-ctrl-btn primary" id="timerStop" style="display:none;background:var(--text2)">⏹ 停止</button>
+    <button class="timer-ctrl-btn primary" id="timerStart">▶</button>
+    <button class="timer-ctrl-btn primary" id="timerStop" style="display:none;background:var(--text2)">⏹</button>
   </div>
   <div class="timer-sessions" id="timerSessions"></div>
 </div>
@@ -1522,7 +1522,7 @@ function startTimer() {
   timerRunning = true;
   timerStartMs = Date.now();
   requestWakeLock();
-  $('timerStart').textContent = '⏸ 暂停';
+  $('timerStart').textContent = '⏸';
   $('timerLabel').textContent = '专注中…';
   $('timerStop').style.display = '';
   startPet();
@@ -1544,7 +1544,7 @@ function stopTimer(full = false) {
   timerRunning = false;
   clearInterval(timerInterval);
   releaseWakeLock();
-  $('timerStart').textContent = '▶ 开始';
+  $('timerStart').textContent = '▶';
   if (full) {
     const elapsedMin = state.timerMins - Math.floor(timerSecs / 60);
     logEntry('focus', (elapsedMin || state.timerMins) + '分钟专注', elapsedMin || state.timerMins);
@@ -1566,7 +1566,7 @@ function stopAndRecord() {
   logEntry('focus', elapsedMin + '分钟专注', elapsedMin);
   updateTimerSessions();
   $('timerLabel').textContent = '已记录 ' + elapsedMin + ' 分钟';
-  $('timerStart').textContent = '▶ 开始';
+  $('timerStart').textContent = '▶';
   $('timerStop').style.display = 'none';
   stopPet();
   renderAll();
