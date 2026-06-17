@@ -375,7 +375,15 @@ ul { list-style: none; }
   background: var(--surface); border-radius: 20px; padding: 20px;
   z-index:201; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
-.sudoku-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:1rem; }
+.sudoku-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:1rem; }
+.sudoku-diff-row { display:flex; gap:6px; justify-content:center; margin-bottom:10px; }
+.sudoku-diff {
+  font-size:0.7rem; padding:4px 10px; border-radius:12px;
+  background:var(--hover); color:var(--text2); cursor:pointer;
+  transition: all 0.15s;
+}
+.sudoku-diff.active { background:var(--accent); color:white; font-weight:600; }
+.sudoku-diff:active { transform:scale(0.94); }
 .sudoku-board {
   display: grid; grid-template-columns: repeat(9, 1fr);
   gap: 1px; background: var(--border); border: 2px solid var(--border);
@@ -407,6 +415,7 @@ ul { list-style: none; }
 }
 .sudoku-num:active { background: var(--accent); color: white; transform: scale(0.9); }
 .sudoku-num.used { opacity: 0.25; }
+.sudoku-num.has-err { color: var(--red); }
 .sudoku-actions { display:flex; gap:6px; justify-content:center; }
 .sudoku-act {
   padding: 8px 14px; border-radius: 16px; font-size: 0.75rem;
@@ -466,6 +475,19 @@ ul { list-style: none; }
 }
 .timer-sessions {
   margin-top: 14px; font-size: 0.72rem; color: var(--text3);
+}
+.timer-clock {
+  font-size: 0.8rem; color: var(--text3); text-align: center;
+  padding-bottom: 8px; font-weight: 500;
+}
+.timer-pet {
+  font-size: 2rem; text-align: center; padding: 4px 0 8px;
+  animation: petWalk 3s ease-in-out infinite;
+}
+@keyframes petWalk {
+  0% { transform: translateX(-60px); }
+  50% { transform: translateX(60px); }
+  100% { transform: translateX(-60px); }
 }
 
 /* ============================================ */
@@ -939,6 +961,7 @@ ul { list-style: none; }
 <!-- Timer overlay -->
 <div class="timer-overlay" id="timerOverlay"></div>
 <div class="timer-dialog" id="timerDialog" style="display:none;">
+  <div class="timer-clock" id="timerClock"></div>
   <div class="timer-ring-wrap">
     <svg class="timer-ring" viewBox="0 0 120 120">
       <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="6"/>
@@ -955,11 +978,13 @@ ul { list-style: none; }
     <button class="timer-preset active" data-min="25">25分</button>
     <button class="timer-preset" data-min="15">15分</button>
     <button class="timer-preset" data-min="45">45分</button>
-    <button class="timer-preset" data-min="5">5分</button>
+    <button class="timer-preset" data-min="10">10分</button>
   </div>
+  <div class="timer-pet" id="timerPet">🐱</div>
   <div class="timer-controls">
     <button class="timer-ctrl-btn" id="timerReset">↺</button>
     <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
+    <button class="timer-ctrl-btn" id="timerStop" style="display:none">⏹ 停止</button>
     <button class="timer-ctrl-btn" id="timerClose">✕</button>
   </div>
   <div class="timer-sessions" id="timerSessions"></div>
@@ -970,7 +995,13 @@ ul { list-style: none; }
 <div class="sudoku-dialog" id="sudokuDialog" style="display:none;">
   <div class="sudoku-header">
     <span style="font-weight:650">🧩 数独</span>
+    <span id="sudokuTime" style="font-size:0.85rem;color:var(--accent);font-weight:550">⏱ 00:00</span>
     <button id="sudokuClose" style="font-size:1.1rem;padding:4px 8px">✕</button>
+  </div>
+  <div class="sudoku-diff-row">
+    <button class="sudoku-diff active" data-sdiff="easy">🟢 简单</button>
+    <button class="sudoku-diff" data-sdiff="medium">🟡 中等</button>
+    <button class="sudoku-diff" data-sdiff="hard">🔴 困难</button>
   </div>
   <div class="sudoku-board" id="sudokuBoard"></div>
   <div class="sudoku-nums" id="sudokuNums"></div>
@@ -1337,6 +1368,13 @@ function getTodayFocus() {
 }
 
 // ─── Timer ────────────────────────────────────
+let timerStartMs = 0;
+
+function updateClock() {
+  const now = new Date();
+  $('timerClock').textContent = '🕐 ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+}
+
 function openTimer() {
   $('timerOverlay').classList.add('show');
   $('timerDialog').style.display = 'block';
@@ -1345,59 +1383,101 @@ function openTimer() {
   updateTimerDisplay();
   updateTimerPresets();
   $('timerLabel').textContent = '准备开始';
+  $('timerStop').style.display = 'none';
+  $('timerPet').style.display = 'none';
   updateTimerSessions();
+  updateClock();
 }
+
 function closeTimer() {
-  if (timerRunning) stopTimer();
+  if (timerRunning) stopAndRecord();
   $('timerOverlay').classList.remove('show');
   $('timerDialog').style.display = 'none';
 }
+
 function updateTimerDisplay() {
   const m = Math.floor(timerSecs / 60);
   const s = timerSecs % 60;
   $('timerDisplay').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
   const total = state.timerMins * 60;
   const progress = total > 0 ? (timerSecs / total) : 0;
-  const circ = 326.7; // 2*PI*52
+  const circ = 326.7;
   $('timerProgress').style.strokeDashoffset = circ * (1 - progress);
 }
+
 function updateTimerPresets() {
   document.querySelectorAll('.timer-preset').forEach(b => {
     b.classList.toggle('active', +b.dataset.min === state.timerMins);
   });
 }
+
 function updateTimerSessions() {
   $('timerSessions').textContent = '今日专注：' + getTodayFocus() + ' 次';
 }
+
 function startTimer() {
   if (timerRunning) return;
   timerRunning = true;
+  timerStartMs = Date.now();
   $('timerStart').textContent = '⏸ 暂停';
   $('timerLabel').textContent = '专注中…';
+  $('timerStop').style.display = '';
+  // Show pet animation
+  const pets = ['🐱','🐕','🐰','🐼','🦊','🐨','🐸','🐤'];
+  $('timerPet').textContent = pets[Math.floor(Math.random() * pets.length)];
+  $('timerPet').style.display = 'block';
+  // Clock update
+  updateClock();
+  const clockInterval = setInterval(updateClock, 1000);
+
   timerInterval = setInterval(() => {
     timerSecs--;
     updateTimerDisplay();
     if (timerSecs <= 0) {
-      stopTimer();
-      logEntry('focus', state.timerMins + '分钟专注', state.timerMins);
-      updateTimerSessions();
-      $('timerLabel').textContent = '完成！';
-      // Vibrate on mobile
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      renderAll();
+      clearInterval(clockInterval);
+      stopTimer(true);
     }
   }, 1000);
 }
-function stopTimer() {
+
+function stopTimer(full = false) {
   timerRunning = false;
   clearInterval(timerInterval);
   $('timerStart').textContent = '▶ 开始';
+  if (full) {
+    const elapsedMin = state.timerMins - Math.floor(timerSecs / 60);
+    logEntry('focus', (elapsedMin || state.timerMins) + '分钟专注', elapsedMin || state.timerMins);
+    updateTimerSessions();
+    $('timerLabel').textContent = '完成！';
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    renderAll();
+  }
+  $('timerStop').style.display = 'none';
+  $('timerPet').style.display = 'none';
 }
+
+function stopAndRecord() {
+  // Record partial session
+  const elapsed = Math.floor((Date.now() - timerStartMs) / 1000);
+  const elapsedMin = Math.max(1, Math.round(elapsed / 60));
+  clearInterval(timerInterval);
+  timerRunning = false;
+  logEntry('focus', elapsedMin + '分钟专注', elapsedMin);
+  updateTimerSessions();
+  $('timerLabel').textContent = '已记录 ' + elapsedMin + ' 分钟';
+  $('timerStart').textContent = '▶ 开始';
+  $('timerStop').style.display = 'none';
+  $('timerPet').style.display = 'none';
+  renderAll();
+}
+
 function resetTimer() {
   stopTimer();
   timerSecs = state.timerMins * 60;
   updateTimerDisplay();
   $('timerLabel').textContent = '准备开始';
+  $('timerStop').style.display = 'none';
+  $('timerPet').style.display = 'none';
 }
 
 // ─── Stats / Heatmap ─────────────────────────
@@ -1411,9 +1491,18 @@ function renderStatsView() {
   const startDate = new Date(todayDate);
   startDate.setDate(startDate.getDate() - 83); // 12 weeks
 
-  // Build activity map from individual log entries
+  // Build activity map: sum focus MINUTES per day, +1 per task done
   const activity = {};
-  logs.forEach(l => { activity[l.date] = (activity[l.date] || 0) + 1; });
+  const focusMinutes = {}; // per-day focus minutes
+  logs.forEach(l => {
+    if (l.type === 'focus') {
+      const mins = l.duration || 25; // default 25 min per session
+      activity[l.date] = (activity[l.date] || 0) + mins;
+      focusMinutes[l.date] = (focusMinutes[l.date] || 0) + mins;
+    } else {
+      activity[l.date] = (activity[l.date] || 0) + 1;
+    }
+  });
   doneTasks.forEach(t => {
     const d = t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : (t.due || '');
     if (d) activity[d] = (activity[d] || 0) + 1;
@@ -1484,6 +1573,8 @@ function renderStatsView() {
   html += '</div>';
 
   // Countdown section
+  html += '<div id="hmInfo" style="display:none;font-size:0.7rem;color:var(--accent);text-align:center;padding:4px 8px 0;font-weight:550"></div>';
+
   html += '<div class="group-header">⏳ 倒数日</div>';
   html += renderCountdowns();
 
@@ -1496,7 +1587,11 @@ function renderStatsView() {
     html += '<div class="heatmap-col">';
     col.forEach(d => {
       if (!d) html += '<div class="heatmap-cell" style="opacity:0"></div>';
-      else html += '<div class="heatmap-cell ' + level(d.count) + '" title="' + d.date + ': ' + d.count + '"></div>';
+      else {
+        const mins = focusMinutes[d.date] || 0;
+        const tooltip = d.date + ' · 专注' + mins + '分钟 · ' + d.count + '活动';
+        html += '<div class="heatmap-cell ' + level(d.count) + '" data-hm-date="' + d.date + '" title="' + tooltip + '"></div>';
+      }
     });
     html += '</div>';
   });
@@ -1612,10 +1707,13 @@ function renderCountdowns() {
 }
 
 // ─── Sudoku ───────────────────────────────────
-let sudoku = { board: [], solution: [], selR: -1, selC: -1, given: [] };
+let sudoku = { board: [], solution: [], selR: -1, selC: -1, given: [], difficulty: 'medium', gameSecs: 0, gameTimer: null, errors: {} };
 
 function generateSudoku() {
-  // Generate complete board via backtracking
+  if (sudoku.gameTimer) { clearInterval(sudoku.gameTimer); sudoku.gameTimer = null; }
+  sudoku.gameSecs = 0;
+  sudoku.errors = {};
+
   const board = Array.from({length:9}, () => Array(9).fill(0));
   function isValid(b, r, c, n) {
     for (let i = 0; i < 9; i++) {
@@ -1641,25 +1739,32 @@ function generateSudoku() {
     return true;
   }
   fill(board);
-  const solution = board.map(r => [...r]);
+  sudoku.solution = board.map(r => [...r]);
 
-  // Remove cells (difficulty: 40 empty = medium)
+  // Difficulty: easy=36, medium=45, hard=54
+  const removeMap = { easy: 36, medium: 45, hard: 54 };
   const given = Array.from({length:9}, () => Array(9).fill(true));
-  let toRemove = 40;
+  let toRemove = removeMap[sudoku.difficulty] || 45;
   while (toRemove > 0) {
     const r = Math.floor(Math.random() * 9);
     const c = Math.floor(Math.random() * 9);
     if (given[r][c]) { given[r][c] = false; toRemove--; }
   }
-
-  // Create puzzle by clearing non-given cells
-  const puzzle = board.map((row, r) => row.map((n, c) => given[r][c] ? n : 0));
-
-  sudoku.board = puzzle;
-  sudoku.solution = solution;
   sudoku.given = given;
-  sudoku.selR = -1;
-  sudoku.selC = -1;
+  sudoku.board = board.map((row, r) => row.map((n, c) => given[r][c] ? n : 0));
+  sudoku.selR = -1; sudoku.selC = -1;
+
+  // Start game timer
+  sudoku.gameTimer = setInterval(() => { sudoku.gameSecs++; updateSudokuTime(); }, 1000);
+}
+
+function updateSudokuTime() {
+  const el = document.getElementById('sudokuTime');
+  if (el) {
+    const m = Math.floor(sudoku.gameSecs / 60);
+    const s = sudoku.gameSecs % 60;
+    el.textContent = '⏱ ' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
 }
 
 function renderSudoku() {
@@ -1671,33 +1776,51 @@ function renderSudoku() {
       if (r === 2 || r === 5) cls += ' bb';
       if (sudoku.given[r] && sudoku.given[r][c]) cls += ' given';
       if (r === sudoku.selR && c === sudoku.selC) cls += ' selected';
-      if (sudoku.selR >= 0 && sudoku.board[sudoku.selR] && sudoku.board[sudoku.selR][sudoku.selC] === sudoku.board[r][c] && sudoku.board[r][c] !== 0 && !(r === sudoku.selR && c === sudoku.selC)) cls += ' same-num';
-      const val = sudoku.board[r][c] || '';
-      html += '<div class=\"' + cls + '\" data-sr=\"' + r + '\" data-sc=\"' + c + '\">' + val + '</div>';
+      // Error marking: user-placed number that's wrong
+      const val = sudoku.board[r][c];
+      const isGiven = sudoku.given[r] && sudoku.given[r][c];
+      if (!isGiven && val && sudoku.solution[r][c] !== val) cls += ' error';
+      if (sudoku.selR >= 0 && sudoku.board[sudoku.selR] && sudoku.board[sudoku.selR][sudoku.selC] === val && val !== 0 && !(r === sudoku.selR && c === sudoku.selC)) cls += ' same-num';
+      html += '<div class=\"' + cls + '\" data-sr=\"' + r + '\" data-sc=\"' + c + '\">' + (val || '') + '</div>';
     }
   }
   $('sudokuBoard').innerHTML = html;
 
-  // Number buttons
+  // Number buttons (color based on error status)
   let numsHTML = '';
   for (let n = 1; n <= 9; n++) {
-    // Count how many of this number are placed
-    let count = 0;
+    let count = 0, errors = 0;
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
-      if (sudoku.board[r][c] === n) count++;
+      if (sudoku.board[r][c] === n) { count++; if (sudoku.solution[r][c] !== n) errors++; }
     }
-    numsHTML += '<div class=\"sudoku-num' + (count >= 9 ? ' used' : '') + '\" data-sn=\"' + n + '\">' + n + '</div>';
+    numsHTML += '<div class=\"sudoku-num' + (count >= 9 ? ' used' : '') + (errors > 0 ? ' has-err' : '') + '\" data-sn=\"' + n + '\">' + n + '</div>';
   }
   $('sudokuNums').innerHTML = numsHTML;
 }
 
 function placeSudokuNum(n) {
   if (sudoku.selR < 0 || sudoku.selC < 0) return;
-  if (sudoku.given[sudoku.selR][sudoku.selC]) return; // can't change given
-  if (sudoku.board[sudoku.selR][sudoku.selC] === n) { sudoku.board[sudoku.selR][sudoku.selC] = 0; }
-  else sudoku.board[sudoku.selR][sudoku.selC] = n;
+  if (sudoku.given[sudoku.selR] && sudoku.given[sudoku.selR][sudoku.selC]) return;
+  if (sudoku.board[sudoku.selR][sudoku.selC] === n) {
+    sudoku.board[sudoku.selR][sudoku.selC] = 0;
+    delete sudoku.errors[sudoku.selR + ',' + sudoku.selC];
+  } else {
+    sudoku.board[sudoku.selR][sudoku.selC] = n;
+    // Check against solution
+    if (sudoku.solution[sudoku.selR][sudoku.selC] !== n) {
+      sudoku.errors[sudoku.selR + ',' + sudoku.selC] = true;
+    } else {
+      delete sudoku.errors[sudoku.selR + ',' + sudoku.selC];
+    }
+  }
   renderSudoku();
-  if (checkSudokuWin()) { setTimeout(() => { alert('🎉 恭喜完成数独！'); }, 200); }
+  if (checkSudokuWin()) {
+    clearInterval(sudoku.gameTimer);
+    const m = Math.floor(sudoku.gameSecs / 60);
+    const s = sudoku.gameSecs % 60;
+    logEntry('sudoku', '完成' + {easy:'简单',medium:'中等',hard:'困难'}[sudoku.difficulty] + '数独 (' + m + '分' + s + '秒)', Math.floor(sudoku.gameSecs / 60));
+    setTimeout(() => { alert('🎉 恭喜！' + m + '分' + s + '秒完成数独！'); }, 200);
+  }
 }
 
 function checkSudokuWin() {
@@ -1708,7 +1831,6 @@ function checkSudokuWin() {
 }
 
 function sudokuHint() {
-  // Find an empty or wrong cell
   const wrong = [];
   for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
     if (sudoku.board[r][c] !== sudoku.solution[r][c]) wrong.push([r,c]);
@@ -1716,15 +1838,25 @@ function sudokuHint() {
   if (wrong.length === 0) return;
   const [r, c] = wrong[Math.floor(Math.random() * wrong.length)];
   sudoku.board[r][c] = sudoku.solution[r][c];
+  delete sudoku.errors[r + ',' + c];
   sudoku.selR = r; sudoku.selC = c;
   renderSudoku();
 }
 
+function setSudokuDifficulty(diff) {
+  sudoku.difficulty = diff;
+  document.querySelectorAll('.sudoku-diff').forEach(b => b.classList.toggle('active', b.dataset.sdiff === diff));
+  generateSudoku();
+  renderSudoku();
+  updateSudokuTime();
+}
+
 function openSudoku() {
   if (!sudoku.board.length || sudoku.board.every(r => r.every(c => c === 0))) generateSudoku();
-  renderSudoku();
+  else { updateSudokuTime(); }
   $('sudokuOverlay').classList.add('show');
   $('sudokuDialog').style.display = 'block';
+  document.querySelectorAll('.sudoku-diff').forEach(b => b.classList.toggle('active', b.dataset.sdiff === sudoku.difficulty));
 }
 
 function closeSudoku() {
@@ -2358,6 +2490,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (timerRunning) { stopTimer(); updateTimerDisplay(); }
     else startTimer();
   });
+  $('timerStop').addEventListener('click', () => {
+    if (timerRunning) stopAndRecord();
+  });
   $('timerReset').addEventListener('click', () => { resetTimer(); updateTimerDisplay(); });
 
   document.querySelector('.timer-presets').addEventListener('click', e => {
@@ -2394,7 +2529,14 @@ document.addEventListener('DOMContentLoaded', () => {
     placeSudokuNum(+btn.dataset.sn);
   });
 
-  $('sudokuNew').addEventListener('click', () => { generateSudoku(); renderSudoku(); });
+  $('sudokuNew').addEventListener('click', () => { generateSudoku(); renderSudoku(); updateSudokuTime(); });
+
+  // Difficulty buttons
+  document.querySelector('.sudoku-diff-row').addEventListener('click', e => {
+    const btn = e.target.closest('.sudoku-diff');
+    if (!btn) return;
+    setSudokuDifficulty(btn.dataset.sdiff);
+  });
   $('sudokuHint').addEventListener('click', sudokuHint);
   $('sudokuCheck').addEventListener('click', () => {
     let errs = 0;
@@ -2423,6 +2565,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const cid = delBtn.dataset.cdDel;
       state.countdowns = (state.countdowns || []).filter(c => c.id !== cid);
       renderAll();
+      return;
+    }
+    // Heatmap cell click
+    const hmCell = e.target.closest('[data-hm-date]');
+    if (hmCell) {
+      const ds = hmCell.dataset.hmDate;
+      const mins = focusMinutes[ds] || 0;
+      const tasksDone = state.tasks.filter(t => t.completedAt && new Date(t.completedAt).toISOString().split('T')[0] === ds).length;
+      $('hmInfo').style.display = 'block';
+      $('hmInfo').textContent = ds + ' · 专注' + mins + '分钟 · 完成' + tasksDone + '个任务';
+      setTimeout(() => { if ($('hmInfo')) $('hmInfo').style.display = 'none'; }, 4000);
       return;
     }
   });
