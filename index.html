@@ -552,6 +552,28 @@ ul { list-style: none; }
 .heatmap-legend .dot.l3 { background: var(--accent); opacity: 0.75; }
 .heatmap-legend .dot.l4 { background: var(--accent); }
 
+/* Heatmap popup */
+.hm-popup {
+  animation: popIn 0.2s ease;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.hm-popup-inner {
+  background: var(--text); color: var(--bg);
+  padding: 14px 18px; border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  min-width: 160px;
+}
+.hm-popup-date {
+  font-size: 0.7rem; opacity: 0.7; margin-bottom: 6px;
+}
+.hm-popup-row {
+  font-size: 0.85rem; padding: 2px 0;
+}
+.hm-popup-row b { color: var(--accent); }
+
 .stats-summary {
   display: flex; gap: 12px; padding: 12px 8px;
 }
@@ -1592,8 +1614,6 @@ function renderStatsView() {
   html += '</div>';
 
   // Countdown section
-  html += '<div id="hmInfo" style="display:none;font-size:0.75rem;color:var(--accent);text-align:center;padding:6px 12px;margin:6px 8px 0;background:var(--accent-bg);border-radius:12px;font-weight:550"></div>';
-
   html += '<div class="group-header">⏳ 倒数日</div>';
   html += renderCountdowns();
 
@@ -2599,15 +2619,32 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       return;
     }
-    // Heatmap cell click
+    // Heatmap cell click → show floating popup
     const hmCell = e.target.closest('[data-hm-date]');
     if (hmCell) {
       const ds = hmCell.dataset.hmDate;
       const mins = (state._focusMinutes && state._focusMinutes[ds]) || 0;
       const tasksDone = state.tasks.filter(t => t.completedAt && new Date(t.completedAt).toISOString().split('T')[0] === ds).length;
-      $('hmInfo').style.display = 'block';
-      $('hmInfo').textContent = ds + ' · 专注' + mins + '分钟 · 完成' + tasksDone + '个任务';
-      setTimeout(() => { if ($('hmInfo')) $('hmInfo').style.display = 'none'; }, 4000);
+      // Remove old popup
+      const old = document.querySelector('.hm-popup');
+      if (old) old.remove();
+      // Create popup
+      const popup = document.createElement('div');
+      popup.className = 'hm-popup';
+      const rect = hmCell.getBoundingClientRect();
+      popup.innerHTML = '<div class=\"hm-popup-inner\">' +
+        '<div class=\"hm-popup-date\">' + ds + '</div>' +
+        '<div class=\"hm-popup-row\">🔥 专注 <b>' + mins + '</b> 分钟</div>' +
+        '<div class=\"hm-popup-row\">✅ 完成 <b>' + tasksDone + '</b> 个任务</div>' +
+      '</div>';
+      // Position near the cell
+      popup.style.position = 'fixed';
+      popup.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
+      popup.style.top = (rect.top - 100 > 0 ? rect.top - 100 : rect.bottom + 6) + 'px';
+      popup.style.zIndex = '500';
+      popup.onclick = () => popup.remove();
+      document.body.appendChild(popup);
+      setTimeout(() => { if (popup.parentNode) popup.remove(); }, 3500);
       return;
     }
   });
