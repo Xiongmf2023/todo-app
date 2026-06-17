@@ -499,45 +499,37 @@ ul { list-style: none; }
 }
 
 /* ============================================ */
-/* Heatmap (Stats view)                         */
+/* Heatmap 30-day grid                          */
 /* ============================================ */
-.heatmap-wrap {
-  padding: 8px 8px 4px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.hm30-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  padding: 0 4px;
 }
-.heatmap-grid {
-  display: flex; gap: 4px;
-  min-width: fit-content;
-  padding: 4px 0;
-}
-.heatmap-col {
-  display: flex; flex-direction: column; gap: 4px;
-}
-.heatmap-cell {
-  width: 18px; height: 18px;
-  border-radius: 4px;
+.hm30-cell {
+  aspect-ratio: 1;
+  border-radius: 10px;
   background: var(--hover);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 0.7rem; cursor: pointer;
   transition: all 0.15s;
-  cursor: pointer;
   position: relative;
+  min-width: 0;
 }
-/* Larger hit target */
-.heatmap-cell::after {
-  content: '';
-  position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
-}
-.heatmap-cell:active { transform: scale(1.3); box-shadow: 0 0 0 3px var(--accent-bg); }
-.heatmap-cell.l1 { background: var(--accent-bg); }
-.heatmap-cell.l2 { background: var(--accent); opacity: 0.5; }
-.heatmap-cell.l3 { background: var(--accent); opacity: 0.75; }
-.heatmap-cell.l4 { background: var(--accent); }
-.heatmap-labels {
-  display: flex; gap: 3px; padding: 4px 8px 0;
-}
-.heatmap-month {
-  font-size: 0.6rem; color: var(--text3);
-}
+.hm30-cell:active { transform: scale(0.92); box-shadow: 0 0 0 3px var(--accent-bg); }
+.hm30-cell.l1 { background: var(--accent-bg); }
+.hm30-cell.l2 { background: var(--accent); opacity: 0.4; }
+.hm30-cell.l3 { background: var(--accent); opacity: 0.7; }
+.hm30-cell.l4 { background: var(--accent); }
+.hm30-day { font-weight: 650; color: var(--text); font-size: 0.85rem; }
+.hm30-cell.l3 .hm30-day, .hm30-cell.l4 .hm30-day { color: white; }
+.hm30-wd { font-size: 0.55rem; color: var(--text3); }
+.hm30-cell.l3 .hm30-wd, .hm30-cell.l4 .hm30-wd { color: rgba(255,255,255,0.7); }
+.hm30-mins { font-size: 0.55rem; color: var(--accent); font-weight: 600; margin-top: 1px; }
+.hm30-cell.l3 .hm30-mins, .hm30-cell.l4 .hm30-mins { color: white; }
+
 .heatmap-legend {
   display: flex; align-items: center; gap: 4px;
   padding: 6px 8px; font-size: 0.62rem; color: var(--text3);
@@ -548,8 +540,8 @@ ul { list-style: none; }
   background: var(--hover);
 }
 .heatmap-legend .dot.l1 { background: var(--accent-bg); }
-.heatmap-legend .dot.l2 { background: var(--accent); opacity: 0.5; }
-.heatmap-legend .dot.l3 { background: var(--accent); opacity: 0.75; }
+.heatmap-legend .dot.l2 { background: var(--accent); opacity: 0.4; }
+.heatmap-legend .dot.l3 { background: var(--accent); opacity: 0.7; }
 .heatmap-legend .dot.l4 { background: var(--accent); }
 
 /* Heatmap popup */
@@ -562,17 +554,23 @@ ul { list-style: none; }
 }
 .hm-popup-inner {
   background: var(--text); color: var(--bg);
-  padding: 14px 18px; border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-  min-width: 160px;
+  padding: 16px 20px; border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  min-width: 200px; max-width: 280px;
 }
 .hm-popup-date {
-  font-size: 0.7rem; opacity: 0.7; margin-bottom: 6px;
+  font-size: 0.75rem; opacity: 0.7; margin-bottom: 8px;
 }
 .hm-popup-row {
-  font-size: 0.85rem; padding: 2px 0;
+  font-size: 0.85rem; padding: 3px 0;
 }
 .hm-popup-row b { color: var(--accent); }
+.hm-popup-tasks {
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  font-size: 0.72rem; opacity: 0.8; max-height: 120px; overflow-y: auto;
+}
+.hm-popup-task { padding: 2px 0; }
 
 .stats-summary {
   display: flex; gap: 12px; padding: 12px 8px;
@@ -1525,76 +1523,36 @@ function renderStatsView() {
   const logs = state.logs || [];
   const doneTasks = state.tasks.filter(t => t.done);
 
-  // Activity heatmap: last 12 weeks
-  const todayDate = new Date();
-  const endDate = new Date(todayDate);
-  const startDate = new Date(todayDate);
-  startDate.setDate(startDate.getDate() - 83); // 12 weeks
+  // ── Build daily activity map ──────────────
+  const activity = {};   // {date: totalScore}
+  const dailyDetail = {}; // {date: {focusMins, focusCount, tasksDone, taskNames:[]}}
+  state._dailyDetail = dailyDetail;
 
-  // Build activity map: sum focus MINUTES per day, +1 per task done
-  const activity = {};
-  const focusMinutes = {}; // per-day focus minutes
-  state._focusMinutes = focusMinutes; // expose for click handler
   logs.forEach(l => {
+    if (!dailyDetail[l.date]) dailyDetail[l.date] = { focusMins: 0, focusCount: 0, tasksDone: 0, taskNames: [] };
     if (l.type === 'focus') {
-      const mins = l.duration || 25; // default 25 min per session
+      const mins = l.duration || 25;
       activity[l.date] = (activity[l.date] || 0) + mins;
-      focusMinutes[l.date] = (focusMinutes[l.date] || 0) + mins;
+      dailyDetail[l.date].focusMins += mins;
+      dailyDetail[l.date].focusCount++;
     } else {
       activity[l.date] = (activity[l.date] || 0) + 1;
     }
   });
   doneTasks.forEach(t => {
     const d = t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : (t.due || '');
-    if (d) activity[d] = (activity[d] || 0) + 1;
+    if (!d) return;
+    if (!dailyDetail[d]) dailyDetail[d] = { focusMins: 0, focusCount: 0, tasksDone: 0, taskNames: [] };
+    dailyDetail[d].tasksDone++;
+    dailyDetail[d].taskNames.push(t.title);
+    activity[d] = (activity[d] || 0) + 1;
   });
 
-  // Generate 12-week grid (7 rows × 12 cols)
-  const days = [];
-  let cursor = new Date(startDate);
-  // Align to Monday
-  const dayOfWeek = cursor.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  cursor.setDate(cursor.getDate() + mondayOffset);
-
-  while (cursor <= endDate) {
-    const ds = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
-    days.push({ date: ds, day: cursor.getDay(), count: activity[ds] || 0 });
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  // Build grid (columns = weeks)
-  const cols = [];
-  let currentCol = [];
-  days.forEach(d => {
-    currentCol.push(d);
-    if (d.day === 0 || currentCol.length === 7) { // Sunday = end of week
-      cols.push(currentCol);
-      currentCol = [];
-    }
-  });
-  if (currentCol.length) cols.push(currentCol);
-
-  // Each col: pad to 7 cells (Mon=0, Tue=1, ..., Sun=6)
-  // The first col might start mid-week, pad top with nulls
-  const fullCols = cols.map((col, ci) => {
-    const padded = [];
-    // Determine what day of week the first entry is
-    const firstDay = col[0].day; // 0=Sun, 1=Mon...
-    // We want Mon(1) at top, Sun(0) at bottom
-    // Pad top
-    const monIdx = firstDay === 0 ? 6 : firstDay - 1; // 0 for Mon, 6 for Sun
-    for (let i = 0; i < monIdx; i++) padded.push(null);
-    col.forEach(d => padded.push(d));
-    while (padded.length < 7) padded.push(null);
-    return padded;
-  });
-
-  function level(c) {
-    if (c === 0) return '';
-    if (c <= 1) return 'l1';
-    if (c <= 3) return 'l2';
-    if (c <= 6) return 'l3';
+  function cellLevel(v) {
+    if (!v || v === 0) return '';
+    if (v <= 10) return 'l1';
+    if (v <= 30) return 'l2';
+    if (v <= 60) return 'l3';
     return 'l4';
   }
 
@@ -1613,48 +1571,37 @@ function renderStatsView() {
   html += '<div class="stats-card"><div class="num">' + streakDays + '天</div><div class="lbl">连续活跃</div></div>';
   html += '</div>';
 
+  // ── 30-day heatmap ─────────────────────────
+  const days30 = [];
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() - 29); // 30 days total
+  for (let i = 0; i < 30; i++) {
+    const ds = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
+    const info = dailyDetail[ds] || { focusMins: 0, tasksDone: 0 };
+    days30.push({ date: ds, day: cursor.getDate(), score: activity[ds] || 0, mins: info.focusMins, tasks: info.tasksDone });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  html += '<div class="group-header">📊 近30天活跃</div>';
+  html += '<div class="hm30-grid">';
+  days30.forEach(d => {
+    const lvl = cellLevel(d.score);
+    const wd = ['日','一','二','三','四','五','六'][new Date(d.date + 'T00:00:00').getDay()];
+    html += '<div class="hm30-cell ' + lvl + '" data-hm-date="' + d.date + '" data-hm-mins="' + d.mins + '" data-hm-tasks="' + d.tasks + '">' +
+      '<span class="hm30-day">' + d.day + '</span>' +
+      '<span class="hm30-wd">' + wd + '</span>' +
+      (d.mins > 0 ? '<span class="hm30-mins">' + d.mins + 'm</span>' : '') +
+    '</div>';
+  });
+  html += '</div>';
+  html += '<div class="heatmap-legend">少 <span class="dot"></span> <span class="dot l1"></span> <span class="dot l2"></span> <span class="dot l3"></span> <span class="dot l4"></span> 多</div>';
+
   // Countdown section
   html += '<div class="group-header">⏳ 倒数日</div>';
   html += renderCountdowns();
 
-  // Build marker (hidden, for debugging)
-  html += '<div style="font-size:0.55rem;color:var(--text3);text-align:center;padding:0 0 8px">build: 2026-06-16-v4 · 共' + state.tasks.length + '任务 ' + state.logs.length + '条记录</div>';
-
-  // Heatmap
-  html += '<div class="heatmap-wrap"><div class="heatmap-grid">';
-  fullCols.forEach(col => {
-    html += '<div class="heatmap-col">';
-    col.forEach(d => {
-      if (!d) html += '<div class="heatmap-cell" style="opacity:0"></div>';
-      else {
-        const mins = focusMinutes[d.date] || 0;
-        const tooltip = d.date + ' · 专注' + mins + '分钟 · ' + d.count + '活动';
-        html += '<div class="heatmap-cell ' + level(d.count) + '" data-hm-date="' + d.date + '" title="' + tooltip + '"></div>';
-      }
-    });
-    html += '</div>';
-  });
-  html += '</div>';
-
-  // Month labels
-  html += '<div class="heatmap-labels">';
-  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  let lastMonth = -1;
-  fullCols.forEach((col, ci) => {
-    const realDay = col.find(d => d !== null);
-    if (realDay) {
-      const m = parseInt(realDay.date.split('-')[1]);
-      if (m !== lastMonth) {
-        html += '<span class="heatmap-month">' + months[m-1] + '</span>';
-        lastMonth = m;
-      }
-    }
-    html += '<span style="width:14px;flex-shrink:0"></span>';
-  });
-  html += '</div></div>';
-
-  // Legend
-  html += '<div class="heatmap-legend">少 <span class="dot"></span> <span class="dot l1"></span> <span class="dot l2"></span> <span class="dot l3"></span> <span class="dot l4"></span> 多</div>';
+  // Build marker
+  html += '<div style="font-size:0.55rem;color:var(--text3);text-align:center;padding:0 0 8px">build: 2026-06-16-v5 · 共' + state.tasks.length + '任务 ' + state.logs.length + '条记录</div>';
 
   // ── History Timeline ─────────────────────
   const history = [...(state.logs || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
@@ -2619,34 +2566,51 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       return;
     }
-    // Heatmap cell click → show floating popup
+  });
+
+  // ── Heatmap click (delegated on body, more reliable) ─
+  document.body.addEventListener('click', e => {
     const hmCell = e.target.closest('[data-hm-date]');
-    if (hmCell) {
-      const ds = hmCell.dataset.hmDate;
-      const mins = (state._focusMinutes && state._focusMinutes[ds]) || 0;
-      const tasksDone = state.tasks.filter(t => t.completedAt && new Date(t.completedAt).toISOString().split('T')[0] === ds).length;
-      // Remove old popup
-      const old = document.querySelector('.hm-popup');
-      if (old) old.remove();
-      // Create popup
-      const popup = document.createElement('div');
-      popup.className = 'hm-popup';
-      const rect = hmCell.getBoundingClientRect();
-      popup.innerHTML = '<div class=\"hm-popup-inner\">' +
-        '<div class=\"hm-popup-date\">' + ds + '</div>' +
-        '<div class=\"hm-popup-row\">🔥 专注 <b>' + mins + '</b> 分钟</div>' +
-        '<div class=\"hm-popup-row\">✅ 完成 <b>' + tasksDone + '</b> 个任务</div>' +
-      '</div>';
-      // Position near the cell
-      popup.style.position = 'fixed';
-      popup.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
-      popup.style.top = (rect.top - 100 > 0 ? rect.top - 100 : rect.bottom + 6) + 'px';
-      popup.style.zIndex = '500';
-      popup.onclick = () => popup.remove();
-      document.body.appendChild(popup);
-      setTimeout(() => { if (popup.parentNode) popup.remove(); }, 3500);
-      return;
+    if (!hmCell) return;
+    const ds = hmCell.dataset.hmDate;
+    const mins = parseInt(hmCell.dataset.hmMins) || 0;
+    const tasks = parseInt(hmCell.dataset.hmTasks) || 0;
+
+    // Remove old popup
+    const old = document.querySelector('.hm-popup');
+    if (old) old.remove();
+
+    // Get daily detail
+    const detail = (state._dailyDetail && state._dailyDetail[ds]) || { focusMins: mins, focusCount: 0, tasksDone: tasks, taskNames: [] };
+
+    // Build popup HTML
+    let tasksHTML = '';
+    if (detail.taskNames && detail.taskNames.length > 0) {
+      tasksHTML = '<div class="hm-popup-tasks">';
+      detail.taskNames.forEach(n => { tasksHTML += '<div class="hm-popup-task">✅ ' + esc(n) + '</div>'; });
+      tasksHTML += '</div>';
     }
+
+    const popup = document.createElement('div');
+    popup.className = 'hm-popup';
+    const rect = hmCell.getBoundingClientRect();
+    popup.innerHTML = '<div class="hm-popup-inner">' +
+      '<div class="hm-popup-date">📅 ' + ds + '</div>' +
+      '<div class="hm-popup-row">🔥 专注 <b>' + detail.focusMins + '</b> 分钟 · <b>' + detail.focusCount + '</b> 次</div>' +
+      '<div class="hm-popup-row">✅ 完成 <b>' + detail.tasksDone + '</b> 个任务</div>' +
+      tasksHTML +
+      '<div style="font-size:0.6rem;opacity:0.5;margin-top:4px">点其他地方关闭</div>' +
+    '</div>';
+    popup.style.cssText = 'position:fixed;z-index:500;left:' + Math.min(rect.left, window.innerWidth - 290) + 'px;top:' + (rect.top > window.innerHeight/2 ? rect.top - 180 : rect.bottom + 8) + 'px;';
+    popup.onclick = (ev) => { ev.stopPropagation(); popup.remove(); };
+    document.body.appendChild(popup);
+
+    // Close on outside click
+    const closeFn = (ev) => {
+      if (!popup.contains(ev.target)) { popup.remove(); document.body.removeEventListener('click', closeFn); }
+    };
+    setTimeout(() => document.body.addEventListener('click', closeFn), 50);
+    setTimeout(() => { if (popup.parentNode) popup.remove(); }, 5000);
   });
 
   // ── Swipe gestures ────────────────────────
