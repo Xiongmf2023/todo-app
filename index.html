@@ -512,14 +512,10 @@ ul { list-style: none; }
   font-size: 0.8rem; color: var(--text3); text-align: center;
   padding-bottom: 8px; font-weight: 500;
 }
-.timer-pet {
-  font-size: 2rem; text-align: center; padding: 4px 0 8px;
-  animation: petWalk 3s ease-in-out infinite;
-}
-@keyframes petWalk {
-  0% { transform: translateX(-60px); }
-  50% { transform: translateX(60px); }
-  100% { transform: translateX(-60px); }
+.focus-pet {
+  position: fixed; z-index: 999; pointer-events: none;
+  font-size: 2.5rem;
+  transition: all 1.5s ease-in-out;
 }
 
 /* ============================================ */
@@ -1049,7 +1045,6 @@ ul { list-style: none; }
     <button class="timer-preset" data-min="10">10分</button>
     <input type="number" class="timer-custom" id="timerCustom" placeholder="自定义" min="1" max="120" value="">
   </div>
-  <div class="timer-pet" id="timerPet">🐱</div>
   <div class="timer-controls">
     <button class="timer-ctrl-btn" id="timerReset">↺</button>
     <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
@@ -1080,6 +1075,9 @@ ul { list-style: none; }
     <button class="sudoku-act" id="sudokuCheck">✅ 检查</button>
   </div>
 </div>
+
+<!-- Focus pet (fullscreen) -->
+<div class="focus-pet" id="focusPet" style="display:none">🐱</div>
 
 <!-- Confetti -->
 <canvas id="confetti"></canvas>
@@ -1114,6 +1112,26 @@ let timerSecs = 0;
 let timerRunning = false;
 let timerInterval = null;
 let wakeLock = null;
+let petInterval = null;
+
+function startPet() {
+  const pet = document.getElementById('focusPet');
+  if (!pet) return;
+  const pets = ['🐱','🐕','🐰','🐼','🦊','🐨','🐸','🐤','🐙'];
+  pet.textContent = pets[Math.floor(Math.random() * pets.length)];
+  pet.style.display = 'block';
+  pet.style.left = Math.random() * 80 + '%';
+  pet.style.top = Math.random() * 80 + '%';
+  petInterval = setInterval(() => {
+    pet.style.left = Math.random() * 80 + '%';
+    pet.style.top = Math.random() * 80 + '%';
+  }, 2000);
+}
+function stopPet() {
+  const pet = document.getElementById('focusPet');
+  if (pet) pet.style.display = 'none';
+  if (petInterval) { clearInterval(petInterval); petInterval = null; }
+}
 
 async function requestWakeLock() {
   try {
@@ -1466,7 +1484,6 @@ function openTimer() {
   updateTimerPresets();
   $('timerLabel').textContent = '准备开始';
   $('timerStop').style.display = 'none';
-  $('timerPet').style.display = 'none';
   updateTimerSessions();
   updateClock();
 }
@@ -1474,6 +1491,7 @@ function openTimer() {
 function closeTimer() {
   if (timerRunning) stopAndRecord();
   releaseWakeLock();
+  stopPet();
   $('timerOverlay').classList.remove('show');
   $('timerDialog').style.display = 'none';
 }
@@ -1506,10 +1524,7 @@ function startTimer() {
   $('timerStart').textContent = '⏸ 暂停';
   $('timerLabel').textContent = '专注中…';
   $('timerStop').style.display = '';
-  // Show pet animation
-  const pets = ['🐱','🐕','🐰','🐼','🦊','🐨','🐸','🐤'];
-  $('timerPet').textContent = pets[Math.floor(Math.random() * pets.length)];
-  $('timerPet').style.display = 'block';
+  startPet();
   // Clock update
   updateClock();
   const clockInterval = setInterval(updateClock, 1000);
@@ -1538,7 +1553,7 @@ function stopTimer(full = false) {
     renderAll();
   }
   $('timerStop').style.display = 'none';
-  $('timerPet').style.display = 'none';
+  stopPet();
 }
 
 function stopAndRecord() {
@@ -1552,17 +1567,18 @@ function stopAndRecord() {
   $('timerLabel').textContent = '已记录 ' + elapsedMin + ' 分钟';
   $('timerStart').textContent = '▶ 开始';
   $('timerStop').style.display = 'none';
-  $('timerPet').style.display = 'none';
+  stopPet();
   renderAll();
 }
 
 function resetTimer() {
   stopTimer();
+  stopPet();
   timerSecs = state.timerMins * 60;
   updateTimerDisplay();
   $('timerLabel').textContent = '准备开始';
   $('timerStop').style.display = 'none';
-  $('timerPet').style.display = 'none';
+  stopPet();
 }
 
 // ─── Stats / Heatmap ─────────────────────────
