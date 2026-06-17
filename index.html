@@ -117,10 +117,13 @@ ul { list-style: none; }
   transition: background 0.2s;
 }
 .app-header h1 {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 750;
   letter-spacing: -0.02em;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .header-btn {
   width: 38px; height: 38px;
@@ -462,8 +465,8 @@ ul { list-style: none; }
 .timer-dialog {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
   background: var(--surface); border-radius: 24px;
-  padding: 32px 24px 20px;
-  z-index: 201; width: 300px;
+  padding: 24px 16px 16px;
+  z-index: 201; width: calc(100vw - 32px); max-width: 340px;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
@@ -494,16 +497,16 @@ ul { list-style: none; }
 .timer-custom::placeholder { color: var(--text3); font-size: 0.62rem; }
 .timer-controls { display: flex; gap: 8px; justify-content: center; }
 .timer-ctrl-btn {
-  width: 48px; height: 48px; border-radius: 50%;
-  font-size: 0.85rem; color: var(--text2); background: var(--hover);
+  width: 40px; height: 40px; border-radius: 50%;
+  font-size: 0.8rem; color: var(--text2); background: var(--hover);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.15s; flex-shrink: 0;
 }
 .timer-ctrl-btn:active { transform: scale(0.92); }
 .timer-ctrl-btn.primary {
-  width: auto; padding: 0 24px; border-radius: 24px;
-  background: var(--accent); color: white; font-weight: 600; font-size: 0.9rem;
-  gap: 4px;
+  width: auto; padding: 0 18px; border-radius: 20px;
+  background: var(--accent); color: white; font-weight: 600; font-size: 0.85rem;
+  gap: 2px; flex-shrink: 0; white-space: nowrap;
 }
 .timer-sessions {
   margin-top: 14px; font-size: 0.72rem; color: var(--text3);
