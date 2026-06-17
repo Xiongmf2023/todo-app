@@ -917,6 +917,7 @@ ul { list-style: none; }
   <h1 id="headerTitle">📋 今天</h1>
   <button class="header-btn" id="searchBtn" aria-label="搜索">🔍</button>
   <button class="header-btn" id="timerBtn" aria-label="计时">⏱️</button>
+  <button class="header-btn" id="refreshBtn" aria-label="刷新">🔄</button>
   <button class="header-btn" id="sudokuBtn" aria-label="数独">🧩</button>
   <button class="header-btn" id="themeBtn" aria-label="主题">🌓</button>
   <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
@@ -2467,6 +2468,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('meta[name="theme-color"]').content =
       state.theme === 'light' ? '#f5f0eb' : '#1a1815';
   }
+
+  // ── Refresh button ────────────────────────
+  $('refreshBtn').addEventListener('click', () => {
+    load(); // re-read from localStorage
+    renderAll();
+    addInput.focus();
+  });
 
   // ── Timer event handlers ──────────────────
   $('timerBtn').addEventListener('click', openTimer);
