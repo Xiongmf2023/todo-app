@@ -1049,7 +1049,6 @@ ul { list-style: none; }
     <input type="number" class="timer-custom" id="timerCustom" placeholder="自定义" min="1" max="120" value="">
   </div>
   <div class="timer-controls">
-    <button class="timer-ctrl-btn" id="timerReset">↺</button>
     <button class="timer-ctrl-btn primary" id="timerStart">▶ 开始</button>
     <button class="timer-ctrl-btn" id="timerStop" style="display:none">⏹ 停止</button>
     <button class="timer-ctrl-btn" id="timerClose">✕</button>
@@ -2572,8 +2571,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('timerStop').addEventListener('click', () => {
     if (timerRunning) stopAndRecord();
   });
-  $('timerReset').addEventListener('click', () => { resetTimer(); updateTimerDisplay(); });
-
   const timerCustomEl = $('timerCustom');
   timerCustomEl.addEventListener('input', () => {
     const v = parseInt(timerCustomEl.value);
