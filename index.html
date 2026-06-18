@@ -591,7 +591,14 @@ ul { list-style: none; }
 .focus-pet {
   position: fixed; z-index: 999; pointer-events: none;
   font-size: 2.5rem;
-  transition: all 1.5s ease-in-out;
+  animation: petPerimeter 60s linear infinite;
+}
+@keyframes petPerimeter {
+  0%   { top: 10px; left: 10px; }
+  25%  { top: 10px; left: calc(100vw - 60px); }
+  50%  { top: calc(100vh - 80px); left: calc(100vw - 60px); }
+  75%  { top: calc(100vh - 80px); left: 10px; }
+  100% { top: 10px; left: 10px; }
 }
 
 /* ============================================ */
@@ -1223,25 +1230,17 @@ let timerSecs = 0;
 let timerRunning = false;
 let timerInterval = null;
 let wakeLock = null;
-let petInterval = null;
 
 function startPet() {
   const pet = document.getElementById('focusPet');
   if (!pet) return;
-  const pets = ['🐱','🐕','🐰','🐼','🦊','🐨','🐸','🐤','🐙'];
+  const pets = ['🐱','🐕','🐰','🐼','🦊','🐨','🐸','🐤'];
   pet.textContent = pets[Math.floor(Math.random() * pets.length)];
   pet.style.display = 'block';
-  pet.style.left = Math.random() * 80 + '%';
-  pet.style.top = Math.random() * 80 + '%';
-  petInterval = setInterval(() => {
-    pet.style.left = Math.random() * 80 + '%';
-    pet.style.top = Math.random() * 80 + '%';
-  }, 2000);
 }
 function stopPet() {
   const pet = document.getElementById('focusPet');
   if (pet) pet.style.display = 'none';
-  if (petInterval) { clearInterval(petInterval); petInterval = null; }
 }
 
 async function requestWakeLock() {
