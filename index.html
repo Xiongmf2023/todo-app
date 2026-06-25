@@ -1031,6 +1031,8 @@ ul { list-style: none; }
   <button class="menu-item" data-menu="sudoku">🧩 数独游戏</button>
   <button class="menu-item" data-menu="game2048">🎮 2048</button>
   <button class="menu-item" data-menu="sokoban">📦 推箱子</button>
+  <button class="menu-item" data-menu="export">📤 导出数据</button>
+  <button class="menu-item" data-menu="import">📥 导入数据</button>
   <button class="menu-item" data-menu="theme">🌓 切换主题</button>
 </div>
 
@@ -1194,6 +1196,9 @@ ul { list-style: none; }
   </div>
 </div>
 
+<!-- Hidden file input for import -->
+<input type="file" id="importFile" accept=".json" style="display:none">
+
 <!-- Focus pet (fullscreen) -->
 <div class="focus-pet" id="focusPet" style="display:none">🐱</div>
 
@@ -1253,6 +1258,34 @@ async function requestWakeLock() {
 }
 async function releaseWakeLock() {
   if (wakeLock) { try { await wakeLock.release(); } catch(e) {} wakeLock = null; }
+}
+
+// ─── Export / Import ─────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'todo-backup-' + today() + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('数据已导出');
+}
+function importData(json) {
+  try {
+    const d = JSON.parse(json);
+    if (!d.tasks || !d.lists) throw new Error('invalid');
+    state.lists = d.lists || state.lists;
+    state.tasks = d.tasks || [];
+    state.logs = d.logs || [];
+    state.countdowns = d.countdowns || [];
+    state.timerMins = d.timerMins || 25;
+    state.theme = d.theme || 'light';
+    applyTheme();
+    renderAll();
+    save();
+    toast('数据已导入！');
+  } catch(e) { alert('导入失败：文件格式不正确'); }
 }
 
 function load() {
@@ -2416,6 +2449,15 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme();
   renderAll();
 
+  // ── Import file listener ──────────────────
+  $('importFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { importData(reader.result); };
+    reader.readAsText(file);
+  });
+
   // ── Add task ──────────────────────────────
   const addInput = $('addInput');
   const addBtn = $('addBtn');
@@ -2787,6 +2829,8 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'sudoku': openSudoku(); break;
       case 'game2048': open2048(); break;
       case 'sokoban': openSokoban(); break;
+      case 'export': exportData(); break;
+      case 'import': document.getElementById('importFile').click(); break;
       case 'theme':
         state.theme = state.theme === 'light' ? 'dark' : 'light';
         applyTheme();
