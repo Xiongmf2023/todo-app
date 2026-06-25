@@ -10,10 +10,6 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23e07b5a'/><text x='50' y='65' text-anchor='middle' fill='white' font-size='50' font-family='system-ui'>✓</text></svg>">
 <title>我的待办</title>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
 <style>
 /* ============================================ */
 /* Theme Variables                              */
@@ -1225,28 +1221,9 @@ ul { list-style: none; }
 (function() {
 'use strict';
 
-// ─── Firebase Config (REPLACE WITH YOUR OWN) ──
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAoUjZVXHV6whql-gea_U8TOZQCkLAH17s",
-  authDomain: "my-todo-app-a5ceb.firebaseapp.com",
-  databaseURL: "https://my-todo-app-a5ceb-default-rtdb.firebaseio.com",
-  projectId: "my-todo-app-a5ceb",
-  storageBucket: "my-todo-app-a5ceb.firebasestorage.app",
-  messagingSenderId: "73234950298",
-  appId: "1:73234950298:web:f5e31c1495dd99e9d59723"
-};
-
-let firebaseReady = false;
-let fbDb = null;
-
-// Try init Firebase
-try {
-  if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    fbDb = firebase.database();
-    firebaseReady = true;
-  }
-} catch(e) { firebaseReady = false; }
+// ─── Firebase REST API Sync ────────────────────
+const FB_DB = 'https://my-todo-app-a5ceb-default-rtdb.firebaseio.com';
+let firebaseReady = true;
 
 // ─── Data ────────────────────────────────────
 const STORE = 'mytodo_v2';
@@ -1366,37 +1343,44 @@ function save() {
 }
 
 function syncToCloud() {
-  if (!firebaseReady || !state.user) return;
-  const path = 'users/' + state.user;
+  if (!state.user) return;
   const data = {
     tasks: state.tasks, lists: state.lists, logs: state.logs,
     countdowns: state.countdowns, timerMins: state.timerMins,
     theme: state.theme, view: state.view, list: state.list,
     updatedAt: Date.now()
   };
-  fbDb.ref(path).set(data).catch(() => {});
+  fetch(FB_DB + '/users/' + encodeURIComponent(state.user) + '.json', {
+    method: 'PUT', body: JSON.stringify(data)
+  }).catch(() => {});
 }
 
 function syncFromCloud(callback) {
-  if (!firebaseReady || !state.user) { callback(false); return; }
-  fbDb.ref('users/' + state.user).once('value').then(snap => {
-    const d = snap.val();
+  if (!state.user) { if (callback) callback(false); return; }
+  fetch(FB_DB + '/users/' + encodeURIComponent(state.user) + '.json')
+  .then(r => r.json()).then(d => {
     if (d && d.tasks) {
-      state.tasks = d.tasks;
-      state.lists = d.lists || state.lists;
-      state.logs = d.logs || [];
-      state.countdowns = d.countdowns || [];
-      state.timerMins = d.timerMins || 25;
-      state.theme = d.theme || 'light';
-      if (d.view) state.view = d.view;
-      if (d.list !== undefined) state.list = d.list;
-      applyTheme();
-      renderAll();
-      save(); // save to local
-      toast('☁️ 数据已同步');
-      callback(true);
-    } else { callback(false); }
-  }).catch(() => { callback(false); });
+      const localTime = state._cloudTime || 0;
+      const cloudTime = d.updatedAt || 0;
+      // Use newer data
+      if (cloudTime > localTime || !state._cloudTime) {
+        state.tasks = d.tasks;
+        state.lists = d.lists || state.lists;
+        state.logs = d.logs || [];
+        state.countdowns = d.countdowns || [];
+        state.timerMins = d.timerMins || 25;
+        state.theme = d.theme || 'light';
+        if (d.view) state.view = d.view;
+        if (d.list !== undefined) state.list = d.list;
+        state._cloudTime = cloudTime;
+        applyTheme();
+        renderAll();
+        save();
+        toast('☁️ 数据已同步');
+      }
+    }
+    if (callback) callback(true);
+  }).catch(() => { if (callback) callback(false); });
 }
 
 // ─── Helpers ─────────────────────────────────
