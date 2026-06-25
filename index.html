@@ -10,6 +10,10 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23e07b5a'/><text x='50' y='65' text-anchor='middle' fill='white' font-size='50' font-family='system-ui'>✓</text></svg>">
 <title>我的待办</title>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 <style>
 /* ============================================ */
 /* Theme Variables                              */
@@ -1018,6 +1022,7 @@ ul { list-style: none; }
 <!-- Header -->
 <div class="app-header">
   <h1 id="headerTitle">📋 今天</h1>
+  <span id="syncBadge" style="display:none;font-size:0.65rem;color:var(--accent);font-weight:550;padding:2px 8px;border-radius:10px;background:var(--accent-bg);cursor:pointer" title="点击同步">☁️</span>
   <button class="header-btn" id="listBtn" aria-label="清单">📂</button>
   <button class="header-btn" id="menuBtn" aria-label="菜单">⋯</button>
 </div>
@@ -1107,6 +1112,17 @@ ul { list-style: none; }
     <button style="font-size:0.75rem;color:var(--text3);padding:4px 10px;" id="searchClose">关闭</button>
   </div>
   <div class="search-results" id="searchResults"></div>
+</div>
+
+<!-- Login overlay -->
+<div class="timer-overlay" id="loginOverlay" style="display:block"></div>
+<div class="timer-dialog" id="loginDialog" style="display:block">
+  <div style="font-size:1.5rem;margin-bottom:8px">☁️</div>
+  <div style="font-weight:650;margin-bottom:12px">云端同步</div>
+  <input type="text" id="loginUser" placeholder="输入用户名" style="width:100%;padding:10px 14px;border-radius:12px;background:var(--hover);font-size:0.9rem;text-align:center;margin-bottom:8px" maxlength="20">
+  <input type="password" id="loginPin" placeholder="设置4位PIN码" style="width:100%;padding:10px 14px;border-radius:12px;background:var(--hover);font-size:0.9rem;text-align:center;margin-bottom:12px" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+  <button id="loginBtn" style="width:100%;padding:10px;border-radius:12px;background:var(--accent);color:white;font-weight:600;font-size:0.9rem">开始同步</button>
+  <div style="font-size:0.65rem;color:var(--text3);margin-top:8px">同一用户名 + PIN = 多设备同步</div>
 </div>
 
 <!-- Timer overlay -->
@@ -1208,6 +1224,29 @@ ul { list-style: none; }
 <script>
 (function() {
 'use strict';
+
+// ─── Firebase Config (REPLACE WITH YOUR OWN) ──
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx"
+};
+
+let firebaseReady = false;
+let fbDb = null;
+
+// Try init Firebase
+try {
+  if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbDb = firebase.database();
+    firebaseReady = true;
+  }
+} catch(e) { firebaseReady = false; }
 
 // ─── Data ────────────────────────────────────
 const STORE = 'mytodo_v2';
@@ -1323,6 +1362,41 @@ function load() {
 
 function save() {
   try { localStorage.setItem(STORE, JSON.stringify(state)); } catch(e) {}
+  if (firebaseReady && state.user) syncToCloud();
+}
+
+function syncToCloud() {
+  if (!firebaseReady || !state.user) return;
+  const path = 'users/' + state.user;
+  const data = {
+    tasks: state.tasks, lists: state.lists, logs: state.logs,
+    countdowns: state.countdowns, timerMins: state.timerMins,
+    theme: state.theme, view: state.view, list: state.list,
+    updatedAt: Date.now()
+  };
+  fbDb.ref(path).set(data).catch(() => {});
+}
+
+function syncFromCloud(callback) {
+  if (!firebaseReady || !state.user) { callback(false); return; }
+  fbDb.ref('users/' + state.user).once('value').then(snap => {
+    const d = snap.val();
+    if (d && d.tasks) {
+      state.tasks = d.tasks;
+      state.lists = d.lists || state.lists;
+      state.logs = d.logs || [];
+      state.countdowns = d.countdowns || [];
+      state.timerMins = d.timerMins || 25;
+      state.theme = d.theme || 'light';
+      if (d.view) state.view = d.view;
+      if (d.list !== undefined) state.list = d.list;
+      applyTheme();
+      renderAll();
+      save(); // save to local
+      toast('☁️ 数据已同步');
+      callback(true);
+    } else { callback(false); }
+  }).catch(() => { callback(false); });
 }
 
 // ─── Helpers ─────────────────────────────────
@@ -1435,6 +1509,17 @@ function updateHeader() {
     title = map[state.view] || '📋 全部';
   }
   $('headerTitle').textContent = title;
+  // Sync badge
+  const badge = document.getElementById('syncBadge');
+  if (badge) {
+    if (firebaseReady && state.user) {
+      badge.style.display = '';
+      badge.textContent = '☁️ ' + state.user;
+      badge.onclick = () => syncFromCloud(() => {});
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
 
 function updateProgress() {
@@ -2447,7 +2532,47 @@ function toast(msg, undo) {
 document.addEventListener('DOMContentLoaded', () => {
   load();
   applyTheme();
-  renderAll();
+
+  // ── Login flow ─────────────────────────────
+  const loginOverlay = $('loginOverlay');
+  const loginDialog = $('loginDialog');
+  const loginUser = $('loginUser');
+  const loginPin = $('loginPin');
+
+  if (firebaseReady && state.user && state.pin) {
+    // Already logged in, hide login and sync
+    loginOverlay.style.display = 'none';
+    loginDialog.style.display = 'none';
+    renderAll();
+    syncFromCloud(() => {});
+  } else if (!firebaseReady) {
+    // Firebase not configured, skip login
+    loginOverlay.style.display = 'none';
+    loginDialog.style.display = 'none';
+    renderAll();
+  } else {
+    // Show login
+    renderAll();
+    if (state.user) loginUser.value = state.user;
+  }
+
+  $('loginBtn').addEventListener('click', () => {
+    const user = loginUser.value.trim();
+    const pin = loginPin.value.trim();
+    if (!user || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      alert('请输入用户名和4位数字PIN');
+      return;
+    }
+    state.user = user;
+    state.pin = pin;
+    save();
+    loginOverlay.style.display = 'none';
+    loginDialog.style.display = 'none';
+    syncFromCloud(() => { toast('☁️ 开始同步'); });
+  });
+  loginPin.addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('loginBtn').click();
+  });
 
   // ── Import file listener ──────────────────
   $('importFile').addEventListener('change', e => {
