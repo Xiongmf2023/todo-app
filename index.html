@@ -1034,6 +1034,7 @@ ul { list-style: none; }
   <button class="menu-item" data-menu="sokoban">📦 推箱子</button>
   <button class="menu-item" data-menu="export">📤 导出数据</button>
   <button class="menu-item" data-menu="import">📥 导入数据</button>
+  <button class="menu-item" data-menu="relogin">🔐 切换账号</button>
   <button class="menu-item" data-menu="theme">🌓 切换主题</button>
 </div>
 
@@ -2527,22 +2528,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginUser = $('loginUser');
   const loginPin = $('loginPin');
 
-  if (firebaseReady && state.user && state.pin) {
-    // Already logged in, hide login and sync
-    loginOverlay.style.display = 'none';
-    loginDialog.style.display = 'none';
-    renderAll();
-    syncFromCloud(() => {});
-  } else if (!firebaseReady) {
-    // Firebase not configured, skip login
-    loginOverlay.style.display = 'none';
-    loginDialog.style.display = 'none';
-    renderAll();
-  } else {
-    // Show login
-    renderAll();
+  function showLogin() {
+    loginOverlay.style.display = 'block';
+    loginDialog.style.display = 'block';
     if (state.user) loginUser.value = state.user;
+    loginPin.value = '';
+    loginPin.focus();
   }
+  function hideLogin() {
+    loginOverlay.style.display = 'none';
+    loginDialog.style.display = 'none';
+  }
+
+  if (state.user && state.pin) {
+    hideLogin();
+    syncFromCloud(() => {});
+  } else {
+    showLogin();
+  }
+  renderAll();
 
   $('loginBtn').addEventListener('click', () => {
     const user = loginUser.value.trim();
@@ -2554,9 +2558,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.user = user;
     state.pin = pin;
     save();
-    loginOverlay.style.display = 'none';
-    loginDialog.style.display = 'none';
-    syncFromCloud(() => { toast('☁️ 开始同步'); });
+    syncToCloud(); // upload local data first
+    hideLogin();
+    toast('☁️ 已登录，数据同步中');
+    syncFromCloud(() => {});
   });
   loginPin.addEventListener('keydown', e => {
     if (e.key === 'Enter') $('loginBtn').click();
@@ -2944,6 +2949,7 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'sokoban': openSokoban(); break;
       case 'export': exportData(); break;
       case 'import': document.getElementById('importFile').click(); break;
+      case 'relogin': showLogin(); break;
       case 'theme':
         state.theme = state.theme === 'light' ? 'dark' : 'light';
         applyTheme();
