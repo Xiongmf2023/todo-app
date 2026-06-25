@@ -1243,6 +1243,8 @@ let state = {
   calDate: '',
   timerMins: 25,   // default focus minutes
   theme: 'light',
+  user: '',
+  pin: '',
   sortBy: 'default',
 };
 
@@ -1333,6 +1335,8 @@ function load() {
       state.timerMins = d.timerMins || 25;
       state.theme = d.theme || 'light';
       state.sortBy = d.sortBy || 'default';
+      state.user = d.user || '';
+      state.pin = d.pin || '';
     }
   } catch(e) {}
 }
